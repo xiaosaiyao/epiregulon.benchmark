@@ -1,0 +1,100 @@
+```{r cache = TRUE}
+# based on /gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/analysis/08_epirgulon.R 
+# change: using 'Clusters_Combined' as cluster lables in calculateP2G and pruneRegulon
+
+suppressPackageStartupMessages(library(epiregulon))
+suppressPackageStartupMessages(library(ArchR))
+suppressPackageStartupMessages(library(GenomicRanges))
+library(BiocParallel)
+#checkdata
+archR_project_path <- "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/"
+proj <- loadArchRProject(path = archR_project_path, showLogo = FALSE)
+
+# load gene expression matrix
+GeneExpressionMatrix <- getMatrixFromProject(
+    ArchRProj = proj,
+    useMatrix = "GeneExpressionMatrix",
+    useSeqnames = NULL,
+    verbose = TRUE,
+    binarize = FALSE,
+    threads = getArchRThreads(),
+    logFile = createLogFile("getMatrixFromProject")
+)
+
+GeneExpressionMatrix <- as(GeneExpressionMatrix, "SingleCellExperiment")
+
+rowData(GeneExpressionMatrix)$strand <- "*"
+rowData_temp <- rowData(GeneExpressionMatrix)
+rowRanges(GeneExpressionMatrix) <- makeGRangesFromDataFrame(rowData(GeneExpressionMatrix))
+rowData(GeneExpressionMatrix) <- rowData_temp
+
+reducedDim(GeneExpressionMatrix, "UMAP_Combined") = getEmbedding(ArchRProj = proj,
+                                                                 embedding = "UMAP_Combined",
+                                                                 returnDF = TRUE)[colnames(GeneExpressionMatrix), ]
+colData(GeneExpressionMatrix) <- getCellColData(proj)[colnames(GeneExpressionMatrix), ]
+rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
+
+names(assays(GeneExpressionMatrix)) <- "logcounts"
+
+GeneExpressionMatrix$Cellline <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",2)
+GeneExpressionMatrix$Treatment <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",3)
+GeneExpressionMatrix$shortlabels <- paste0(substr(GeneExpressionMatrix$Cellline, start=1, stop=1), "_",GeneExpressionMatrix$Treatment)
+
+rowData(GeneExpressionMatrix)[,c("seqnames","start","end","strand")] <- NULL
+
+#load peakMatrix
+peakMatrix <- getMatrixFromProject(
+    ArchRProj = proj,
+    useMatrix = "PeakMatrix",
+    useSeqnames = NULL,
+    verbose = TRUE,
+    binarize = FALSE,
+    threads = getArchRThreads(),
+    logFile = createLogFile("getMatrixFromProject")
+)
+
+peakMatrix <- as(peakMatrix, "SingleCellExperiment")
+peakMatrix <- peakMatrix[, colnames(GeneExpressionMatrix)]
+names(assays(peakMatrix)) <- "counts"
+
+########################
+# epiregulon
+# get TF binding
+grl <- getTFMotifInfo(genome = "hg38")
+head(grl)
+
+# peak2gene links
+
+set.seed(1010)
+
+p2g <- calculateP2G(peakMatrix = peakMatrix,
+                    expMatrix = GeneExpressionMatrix,
+                    reducedDim = reducedDim(GeneExpressionMatrix),
+                    peak_assay = "counts",
+                    exp_assay = "logcounts",
+                    cor_cutoff = 0.5,
+                    clusters = GeneExpressionMatrix$Clusters_Combined
+)
+
+
+# Construct regulons
+overlap <- addTFMotifInfo(grl = grl, p2g = p2g, peakMatrix = peakMatrix)
+
+regulon_df_full <- getRegulon(p2g, overlap, aggregate = FALSE)
+
+
+# prune network
+
+pruned.regulon <- pruneRegulon(regulon = regulon_df_full[regulon_df_full$tf %in%
+                                                             c("FOXA1","AR","SMARCA4"),],
+                               expMatrix = GeneExpressionMatrix,
+                               exp_assay = "logcounts",
+                               peakMatrix = peakMatrix,
+                               peak_assay = "counts",
+                               exp_cutoff = NULL,
+                               prune_value = "pval",
+                               clusters = GeneExpressionMatrix$Clusters_Combined
+                               )
+# free memory
+rm(proj)
+```
