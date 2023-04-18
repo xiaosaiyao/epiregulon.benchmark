@@ -106,11 +106,9 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
 }
 
 #' @export
-
 get_activity_matrix <- function(geneExprMatrix.sce,
                                  method = "FigR",
                                  GRN = NULL,
-                                 Seurat_obj = NULL,
                                  n_bin =24,
                                  tfs = NULL){
     stopifnot(method %in% c("FigR", "Epiregulon", "cellOracle", "Pando", "Scenic"))
@@ -130,6 +128,7 @@ get_activity_matrix <- function(geneExprMatrix.sce,
         library(Signac)
         library(Seurat)
         library(Pando)
+        Seurat_obj <- GRN
         test_srt <- find_modules(Seurat_obj, rsq_thresh = 0.05)
         TFmodules <- NetworkModules(test_srt)
         DefaultAssay(Seurat_obj) <- "RNA"
@@ -173,4 +172,21 @@ get_activity_matrix <- function(geneExprMatrix.sce,
         colnames(activity.matrix) <- matrix_columns
         return(activity.matrix)
     }
+}
+
+#' @export
+plot_workflow_results <- function(activity.matrix, add_plot=FALSE, tf,
+                                  labels,
+                                  positive_elements_label,
+                                  negative_elemetns_label, ...){
+    positive_elements_ind <- grep(positive_elements_label, labels)
+    negative_elements_ind <- grep(negative_elements_label, labels)
+    activity_values <- activity.matrix[tf, ]
+    res <- calculate_accuracy_metrics(activity_values, positive_elements_ind,
+                                      negative_elements_ind)
+    if(add_plot)
+        lines(res$FPR~res$TPR, ...)
+    else
+    plot(res$FPR~res$TPR, type ="l", xlab = "False postive rate",
+         ylab = "True positive rate", ...)
 }
