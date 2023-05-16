@@ -12,7 +12,7 @@ calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_e
     values <- as.vector(values)
     values <- values[unique(c(positive_elements_ind, negative_elements_ind))]
     positive_elements_ind <- which(positive_elements_ind %in% unique(c(positive_elements_ind, negative_elements_ind)))
-    max_val <- max(values)
+    max_val <- max(values) +1 #add to account for ">=" used for threshold
     min_val <- min(values)
     steps <- seq(min_val, max_val, length.out = 1e3)
     is_positive <- rep(FALSE, length(values))
@@ -39,12 +39,13 @@ calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_e
 prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExprMatrix.sce,
                               motif_score = TRUE, ArchR_proj_path = NULL,
                               weight_clusters,
-                              activity_clusters,
+                              activity_clusters=NULL,
                               use_cell_line_weights = TRUE, group_column = "Cellline",
                               path_to_archR_project = NULL){
     weight.args$regulon <- regulon
     weight.args$expMatrix <- geneExprMatrix.sce
-    weight.args$clusters <- geneExprMatrix.sce[[weight_clusters]]
+    if (!is.null(weight_clusters))
+        weight.args$clusters <- as.vector(geneExprMatrix.sce[[weight_clusters]])
     regulon.w <- do.call(addWeights, weight.args)
     if (motif_score){
         if (is.null(path_to_archR_project)){
@@ -61,8 +62,6 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
                                        archr_path = path_to_archR_project)
 
         }
-
-
         # adjust action to whether weight is a matrix or vector
         if(is.null(dim(regulon.w$weight)))
             regulon.w$weight[regulon.w$motif == 0] <- 0
@@ -71,7 +70,8 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     }
     activity_cluster_labels = NULL
     if(!is.na(activity_clusters))
-        activity_cluster_labels <- geneExprMatrix.sce[[activity_clusters]]
+        activity_cluster_labels <- as.vector(geneExprMatrix.sce[[activity_clusters]])
+
     activity.matrix <- calculateActivity(regulon = regulon.w,
                                          expMatrix = geneExprMatrix.sce,
                                          clusters  = activity_cluster_labels)
@@ -106,11 +106,11 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
 }
 
 #' @export
-get_activity_matrix <- function(geneExprMatrix.sce,
-                                 method = "FigR",
+get_activity_matrix <- function(method = NULL,
                                  GRN = NULL,
                                  n_bin =24,
-                                 tfs = NULL){
+                                 tfs = NULL,
+                                geneExprMatrix.sce = NULL){
     stopifnot(method %in% c("FigR", "Epiregulon", "cellOracle", "Pando", "Scenic"))
     library(epiregulon)
     if(method == "FigR"){
@@ -139,7 +139,7 @@ get_activity_matrix <- function(geneExprMatrix.sce,
             # extract target genes (only upregulated)
             targets <- TFmodules@features$genes_pos[[tf]]
             # adjust gene name to Pando requirements
-            tf <- tfs[i] <- names(positive_clusters)[i] <- gsub("-", "", tf)
+            tf <- tfs[i] <- gsub("-", "", tf)
             Seurat_obj <- AddModuleScore(Seurat_obj, features = list(targets), name = paste0(tf, "_activity"),
                                          nbin = n_bin)
             activity.matrix[i,] <- Seurat_obj@meta.data[[paste0(tf, "_activity1")]]
@@ -148,34 +148,40 @@ get_activity_matrix <- function(geneExprMatrix.sce,
         return(activity.matrix)
     }
     else if(method == "cellOracle"){
+        clusters <- colData(geneExprMatrix.sce)$cluster_cellOracle
         regulon <- GRN[,c("target","source", "coef_mean", "cluster")]
-        n_tf <- length(unique(regulon$source))
         colnames(regulon) <- c("target", "tf", "weight", "cluster")
         tfs <- tfs[tfs %in% regulon$tf]
+        regulon <- regulon[regulon$tf %in% tfs,]
         regulon <- split(regulon, regulon$cluster)
-        colnames(clusters) <- c("barcode","cluster_id")
-        unique_clusters <- as.character(unique(clusters$cluster_id))
-        clusters <- split(clusters, clusters$cluster_id)
-        activity.matrix <- matrix(ncol = ncol(assay(geneExprMatrix.sce)), nrow  = n_tf)
+        unique_clusters <- as.character(unique(clusters))
+        cluster_cells <- split(colnames(geneExprMatrix.sce), clusters)
+        activity.matrix <- matrix(ncol = ncol(assay(geneExprMatrix.sce)), nrow  = length(tfs), dimnames = list(tfs))
         cell_ind <- 1
         matrix_columns <- c()
         for (cluster_id in unique_clusters){
-            cluster_cells <- clusters[[cluster_id]]$barcode
-            activity_part <- epiregulon::calculateActivity(expMatrix = geneExprMatrix.sce[,cluster_cells],
+            selected_cells <- cluster_cells[[cluster_id]]
+            activity_part <- epiregulon::calculateActivity(expMatrix = geneExprMatrix.sce[,selected_cells],
                                                            regulon = regulon[[cluster_id]])
-            activity.matrix[,cell_ind:(cell_ind+length(cluster_cells)-1)] <- as.matrix(activity_part)
-            if(is.null(rownames(activity.matrix))) rownames(activity.matrix) <- rownames(activity_part)
-            cell_ind <- cell_ind + length(cluster_cells)
-            matrix_columns <- c(matrix_columns, cluster_cells)
+            # add values for tfs which have 0 activity in the cluster
+            if (nrow(activity_part) < nrow(activity.matrix)){
+                missing_tfs <- setdiff(tfs, rownames(activity_part))
+                activity_part <- rbind(activity_part, matrix(0, ncol = ncol(activity_part), nrow = length(missing_tfs), dimnames = list(missing_tfs)))
+            }
+            activity_part <- activity_part[tfs,,drop = FALSE]
+            activity.matrix[,cell_ind:(cell_ind+length(selected_cells)-1)] <- as.matrix(activity_part)
+            cell_ind <- cell_ind + length(selected_cells)
+            matrix_columns <- c(matrix_columns, selected_cells)
         }
         # adjust row order to sce object
         colnames(activity.matrix) <- matrix_columns
+        activity.matrix <- activity.matrix[Matrix::rowSums(activity.matrix)>0,,drop= FALSE]
         return(activity.matrix)
     }
 }
 
 #' @export
-plot_workflow_results <- function(activity.matrix, add_plot=FALSE, tf,
+getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
                                   labels,
                                   positive_elements_label,
                                   negative_elemetns_label, ...){
@@ -189,4 +195,5 @@ plot_workflow_results <- function(activity.matrix, add_plot=FALSE, tf,
     else
     plot(res$FPR~res$TPR, type ="l", xlab = "False postive rate",
          ylab = "True positive rate", ...)
+    return(calculate_AUC(res$FPR, res$TPR))
 }
