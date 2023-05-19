@@ -1,0 +1,232 @@
+---
+title: "Comparison of different methods for calculationg weights in epiregulon with the use of the simulated data"
+author: "Tomasz Włodarczyk"
+date: "`r Sys.Date()`"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+# Introduction
+This notebook compares across all options for weight computation which are available
+in the epiregulon package. As a ground truth the data simulated by scMultiSim package is used. 
+
+# Highlights
+
+- GRN is composed of 5000 target genes and 500 transcription factors
+
+# GRN preparation
+
+```{r child = "GRN_preparation.Rmd", cache = TRUE}
+```
+
+```{r child = "basic_simulation.Rmd"}
+```
+
+# Comparison of weight methods based on the true counts (unnormalized)
+
+```{r cache = TRUE}
+library(epiregulon)
+library(epiregulon.benchmark)
+input_objects <- processSimResults(sim_res)
+
+# skip pruning since all connections are true
+# add weights using wilcoxon test
+regulon.w.wilcoxon <- addWeights(input_objects$regulon, peakMatrix = input_objects$peakMatrix,
+                        expMatrix = input_objects$geneExpMatrix,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "wilcoxon",
+                        clusters = NULL)
+
+regulon.w.logFC <- addWeights(input_objects$regulon, peakMatrix = input_objects$peakMatrix,
+                        expMatrix = input_objects$geneExpMatrix,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "logFC",
+                        clusters = NULL)
+
+regulon.w.corr <- addWeights(input_objects$regulon, peakMatrix = input_objects$peakMatrix,
+                        expMatrix = input_objects$geneExpMatrix,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "corr",
+                        clusters = input_objects$geneExpMatrix$label)
+
+regulon.w.lmfit <- addWeights(input_objects$regulon, peakMatrix = input_objects$peakMatrix,
+                        expMatrix = input_objects$geneExpMatrix,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "lmfit",
+                        clusters = input_objects$geneExpMatrix$label)
+
+regulon.w.MI <- addWeights(input_objects$regulon, peakMatrix = input_objects$peakMatrix,
+                        expMatrix = input_objects$geneExpMatrix,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "MI",
+                        clusters = input_objects$geneExpMatrix$label)
+
+
+score.combine.wilcoxon <- calculateActivity(regulon = regulon.w.wilcoxon, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.logFC <- calculateActivity(regulon = regulon.w.logFC, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.lmfit <- calculateActivity(regulon = regulon.w.lmfit, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.corr <- calculateActivity(regulon = regulon.w.corr, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.MI <- calculateActivity(regulon = regulon.w.MI, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix,
+                                   exp_assay = "counts"
+                                   ) 
+
+score_matrices <-list(score.combine.wilcoxon, score.combine.logFC, score.combine.lmfit,
+                      score.combine.corr, score.combine.MI)
+methods <- c("wilcoxon", "logFC", "lmfit", "corr", "MI")
+
+```
+
+```{r}
+library(scMultiSim)
+library(epiregulon.benchmark)
+df <- data.frame()
+for(i in seq_along(score_matrices)){
+    method_res <- assessActivityAccuracy(GRN = GRN, 
+                                              sim_options = options_, 
+                                              basic_sim_res = sim_res, 
+                                              activities_obs = score_matrices[[i]])$interchange_number
+    for(i in aeq_along(method_res)){
+        method_res[[i]] <- data.frame(interchnages = method_res[[i]], tf = names(method_res)[i], method = method)
+    }
+    
+    df <- rbind(df, data.frame(tf = names(method_res$interchanges), method = methods[i], interchanges = method_res$interchanges))
+}
+boxplot(df$value~df$method, xlab = "Weight method", ylab = "Rankings mismatch")
+```
+
+
+```{r echo = FALSE}
+saveRDS(df, "accuracy_df.rds")
+```
+
+# Comparison of weight methods based on the observed counts (unnormalized)
+
+```{r cache = TRUE}
+regulon.w.wilcoxon <- addWeights(input_objects$regulon, peakMatix_obs = input_objects$peakMatix_obs,
+                        expMatrix = input_objects$geneExpMatrix_obs,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "wilcoxon",
+                        clusters = NULL)
+
+regulon.w.logFC <- addWeights(input_objects$regulon, peakMatix_obs = input_objects$peakMatix_obs,
+                        expMatrix = input_objects$geneExpMatrix_obs,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "logFC",
+                        clusters = NULL)
+
+regulon.w.corr <- addWeights(input_objects$regulon, peakMatix_obs = input_objects$peakMatix_obs,
+                        expMatrix = input_objects$geneExpMatrix_obs,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "corr",
+                        clusters = input_objects$geneExpMatrix_obs$label)
+
+regulon.w.lmfit <- addWeights(input_objects$regulon, peakMatix_obs = input_objects$peakMatix_obs,
+                        expMatrix = input_objects$geneExpMatrix_obs,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "lmfit",
+                        clusters = input_objects$geneExpMatrix_obs$label)
+
+regulon.w.MI <- addWeights(input_objects$regulon, peakMatix_obs = input_objects$peakMatix_obs,
+                        expMatrix = input_objects$geneExpMatrix_obs,
+                        exp_assay = "counts",
+                        peak_assay = "peak",
+                        method = "MI",
+                        clusters = input_objects$geneExpMatrix_obs$label)
+
+
+score.combine.wilcoxon <- calculateActivity(regulon = regulon.w.wilcoxon, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix_obs,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.logFC <- calculateActivity(regulon = regulon.w.logFC, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix_obs,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.lmfit <- calculateActivity(regulon = regulon.w.lmfit, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix_obs,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.corr <- calculateActivity(regulon = regulon.w.corr, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix_obs,
+                                   exp_assay = "counts"
+                                   ) 
+
+score.combine.MI <- calculateActivity(regulon = regulon.w.MI, mode = "weight", 
+                                   method = "weightedMean",
+                                   expMatrix = input_objects$geneExpMatrix_obs,
+                                   exp_assay = "counts"
+                                   ) 
+
+score_matrices <-list(score.combine.wilcoxon, score.combine.logFC, score.combine.lmfit,
+                      score.combine.corr, score.combine.MI)
+methods <- c("wilcoxon", "logFC", "lmfit", "corr", "MI")
+
+```
+
+```{r cache = TRUE}
+df <- data.frame()
+for(i in seq_along(score_matrices)){
+    method_res <- assessActivityAccuracy(GRN = GRN, 
+                                              sim_options = options_, 
+                                              basic_sim_res = sim_res, 
+                                              activities_obs = score_matrices[[i]])$interchange_number
+    for(i in aeq_along(method_res)){
+        method_res[[i]] <- data.frame(interchnages = method_res[[i]], tf = names(method_res)[i], method = method)
+    }
+    
+    df <- rbind(df, do.call("rbind", method_res))
+}
+boxplot(df$value~df$method, xlab = "Weight method", ylab = "Rankings mismatch")
+```
+
+
+```{r echo = FALSE}
+saveRDS(df, "accuracy_df2.rds")
+```

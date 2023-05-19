@@ -61,7 +61,11 @@ assessActivityAccuracy <- function(GRN, sim_options, basic_sim_res, activities_o
         targets <- unique(GRN[GRN[,2] == tfs[i],1])
         counts_diff <- basic_sim_res$counts[targets,,drop = FALSE] - sim_res$counts[targets,,drop = FALSE]
         ranks_true <- rank(colSums(counts_diff), ties.method = "random")
-        ranks_obs <- rank(colSums(activities_obs[tfs[i],]), ties.method = "random")
+        if (tfs[i] %in% rownames(activities_obs))
+            ranks_obs <- rank(activities_obs[as.character(tfs[i]),], ties.method = "random")
+        # all activities equal to 0 so the rank order is random
+        else
+            ranks_obs <- sample(1:ncol(activities_obs))
         # use observed ranks in the true order
         interchanges <- c(interchanges, calculate_interchanges(ranks_obs[order(ranks_true)]))
         # use true ranks in the observed order

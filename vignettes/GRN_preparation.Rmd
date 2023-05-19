@@ -1,0 +1,43 @@
+```{r cache = TRUE, results="hide"}
+set.seed(10101)
+# number of target genes
+n_target <- 5e3
+# number of transcription factors
+n_tf <- 500
+# target numbers
+n_targets <- rep(0, 500)
+# minimum number of target genes per transcription factor should be 3
+while(any(n_targets < 3))
+    n_targets[n_targets < 3] <- rpois(sum(n_targets < 3), exp(runif(sum(n_targets < 3))*5))
+
+# set number of transcription factors per target gene
+n_tfs_per_target <- sample(1:5e3, sum(n_targets)-5000, replace  =TRUE)
+# ensure at least one transcription factor per target gene
+n_tfs_per_target <- c(n_tfs_per_target, 1:5000)
+n_tfs_per_target <- table(n_tfs_per_target)
+reg_matrix <- matrix(0, ncol = 500, nrow = 5e3, dimnames = list(1:5000, 5001:5500))
+connected_targets <- c()
+for (i in 1:ncol(reg_matrix)){
+    # account for possible repeated target genes at the last step by using min function
+    tgs <- sample(setdiff(1:5000, connected_targets), min(n_targets[i], length(setdiff(1:5000, connected_targets))))
+    reg_matrix[tgs,i] <- 1
+    connected_targets <- which(rowSums(reg_matrix)==n_tfs_per_target)
+}
+
+GRN <- reshape2::melt(reg_matrix)
+GRN <- GRN[GRN[,3]==1, 1:2]
+colnames(GRN) <- c("regulated.gene", "regulator.gene")
+GRN$regulator.effect <- runif(nrow(GRN), min=1, max =5)
+
+# prepare phylogenetic tree
+library(ape)
+phyla <- fork.tree <- stree(2)
+phyla <- bind.tree(phyla, fork.tree, 1)
+phyla <- bind.tree(phyla, phyla, 1)
+phyla <- bind.tree(phyla, phyla, 1)
+phyla <- compute.brlen(phyla, c(3, 2, 4, 1, 1, 2, 2, 2, 2, 4, 8, 5, 3, 2, 2, 5))
+plot(phyla)
+```
+
+
+

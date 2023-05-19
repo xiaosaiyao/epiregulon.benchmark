@@ -1,0 +1,34 @@
+```{r}
+# prepare simulation options
+options_ = list(
+    rand.seed = 0,
+    GRN = GRN,
+    num.cells = 5000, # number of cells
+    num.cifs = 500,
+    tree = phyla, # tree with 17 clusters
+    intrinsic.noise = 0.9,
+    giv.prob = 0.05,
+    augmented.transcr = NULL, # custom parameter
+    atac.effect = 0.5, # effect of regulatory element availability on k_on parameter
+    diff.cif.fraction = 0.8, # fraction of CIFs related to the cell development 
+    discrete.cif = TRUE, # use discrete mode
+    discrete.min.pop.size = 250)
+```
+
+```{r eval = FALSE}
+library(scMultiSim)
+sim_res <- sim_true_counts(options_)
+
+# add noise to gene expression and ATAC-seq data
+add_expr_noise(sim_res)
+# pointers to objects starting with . will disappear during conversion from environment to list
+.grn <- sim_res$.grn
+sim_res <- as.list(sim_res)
+sim_res$.grn <- .grn 
+saveRDS(sim_res, "sim_res.rds")
+```
+```{r echo = TRUE, eval = TRUE}
+#Sys.setenv("R_MAX_VSIZE" = 30 * 2^30)
+sim_res <- readRDS("/gstore/project/lineage/tomek/epiregulon.benchmark/vignettes/sim_res.rds")
+```
+
