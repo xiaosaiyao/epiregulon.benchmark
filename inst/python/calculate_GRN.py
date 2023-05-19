@@ -47,6 +47,5 @@ def calculate_GRN(adata, base_GRN):
 	    df_new['cluster'] = cluster
 	    df = pd.concat([df, df_new])
 
-
-	return df, adata.obs["louvain"]
+	return df
 

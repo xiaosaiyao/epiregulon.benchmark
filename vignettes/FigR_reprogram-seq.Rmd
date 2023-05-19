@@ -1,0 +1,75 @@
+```{r cache = TRUE}
+library(FigR)
+library(dplyr)
+library(FNN)
+library(doParallel)
+#library(ArchR)
+
+mae <- scMultiome::reprogramSeq()
+peakMatrix.se <- as(mae[["PeakMatrix"]], "RangedSummarizedExperiment")
+
+# assay should belong to the Matrix class
+assays(peakMatrix.se)[[1]] <- Matrix::Matrix(assay(peakMatrix.se), dimnames = dimnames(assay(peakMatrix.se)),
+                                             ncol = ncol(assay(peakMatrix.se)))
+
+geneExprMatrix.sce <- mae[["GeneExpressionMatrix"]]
+geneExprMatrix <- as.matrix(assay(geneExprMatrix.sce))
+
+# Remove genes with zero expression across all cells
+geneExprMatrix <- geneExprMatrix[Matrix::rowSums(geneExprMatrix)!=0,]
+
+LSI_ATAC <- SingleCellExperiment::reducedDim(mae[["TileMatrix500"]], type= "LSI_ATAC")
+
+# Cell kNN for later use in results smoothing
+cellkNN <- get.knn(LSI_ATAC, k = 30)$nn.index
+
+rownames(cellkNN) <- rownames(LSI_ATAC)
+
+# use cells with both peak and gene expression data
+geneExprMatrix <- geneExprMatrix[,colnames(geneExprMatrix) %in% colnames(peakMatrix.se)]
+
+# Calculate peak to gene correlation
+# default window around each gene: 50000
+names(assays(peakMatrix.se)) <- "counts"
+
+cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.se,
+                                 RNAmat = geneExprMatrix,
+                                 genome = "hg38",
+                                 nCores = 18,
+                                 p.cut = NULL,
+                                 n_bg = 100,
+                                 windowPadSize = 5e5)
+
+# filter significant peak-gene associations
+
+cisCorr.filt <- cisCorr %>% filter(pvalZ <= 0.05)
+
+# with default setting for runPeakGenecorr there are only 8 dorcGenes left
+
+dorcGenes <- dorcJPlot(dorcTab = cisCorr.filt,
+                             labelTop = 20,
+                             returnGeneList = TRUE,
+                             force = 2)
+
+numDorcs <- cisCorr.filt %>% group_by(Gene) %>% tally() %>%
+    arrange(desc(n))
+
+# calculate domain of regulatory chromatin (DORC) accessibility scores for each gene
+dorcMat <- getDORCScores(ATAC.se = peakMatrix.se,
+                               dorcTab = cisCorr.filt,
+                               geneList = dorcGenes,
+                               nCores = 4)
+
+# smooth DORC scores using cell kNN
+dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = 4)
+
+# smooth gene expression data
+RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = 4)
+
+FigR_GRN <- runFigRGRN(ATAC.se = peakMatrix.se,
+                             dorcTab = cisCorr.filt,
+                             genome = "hg38",
+                             dorcMat = dorcMat.s,
+                             rnaMat = RNAmat.s,
+                             nCores = 4)
+```

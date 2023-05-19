@@ -10,12 +10,12 @@ from celloracle import motif_analysis as ma
 import celloracle as co
 from celloracle.utility import save_as_pickled_object
 
-def prepare_base_GRN(cicero_connections, peaks):
+def prepare_base_GRN(cicero_connections, peaks, association_cutoff):
     #print(peaks)
     peaks = peaks.x.values
     tss_annotated = ma.get_tss_info(peak_str_list=peaks, ref_genome="hg38")
     integrated = ma.integrate_tss_peak_with_cicero(tss_peak=tss_annotated, cicero_connections=cicero_connections)
-    peak = integrated[integrated.coaccess >= 0.8]
+    peak = integrated[integrated.coaccess >= association_cutoff]
     peak = peak[["peak_id", "gene_short_name"]].reset_index(drop=True)
     ref_genome = "hg38"
     genome_installation = ma.is_genome_installed(ref_genome=ref_genome)
