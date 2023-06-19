@@ -1,4 +1,5 @@
 # take simulation output and build reuglon
+#' @import reshape2
 build_regulon <- function(sim_res){
     re_target <- reshape2::melt(sim_res$region_to_gene)
     re_target <- re_target[re_target[,3]>0,1:2]
@@ -12,28 +13,33 @@ build_regulon <- function(sim_res){
     regulon[,c("tf", "idxATAC", "target")]
 }
 
+#' @import Matrix
+normalize_counts <- function(count_matrix){
+    library_sizes <- Matrix::colSums(count_matrix)
+    t(apply(count_matrix,1,function(x) x/library_sizes)*1e4)
+}
+
+
 # return objects needed for epiregulon flow
+#' @import SingleCellExperiment
 #' @export
 processSimResults <- function(sim_res){
     regulon <- build_regulon(sim_res)
     dimnames(sim_res$counts_obs) <- dimnames(sim_res$counts)
-    peakMatrix_obs <- SingleCellExperiment::SingleCellExperiment(list(peak = sim_res$atacseq_obs),
-                                                                 colData = DataFrame(label=sim_res$cell_meta$pop),
-                                                                 rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_obs))))
-    geneExpMatrix_obs <- SingleCellExperiment::SingleCellExperiment(list(counts = sim_res$counts_obs),
-                                                                    colData = DataFrame(label=sim_res$cell_meta$pop),
-                                                                    rowData=DataFrame(gene=seq_len(nrow(sim_res$counts_obs))))
-    peakMatrix <- SingleCellExperiment::SingleCellExperiment(list(peak = sim_res$atacseq_data),
-                                                             colData = DataFrame(label=sim_res$cell_meta$pop),
-                                                             rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
-    geneExpMatrix <- SingleCellExperiment::SingleCellExperiment(list(counts = sim_res$counts),
-                                                                colData = DataFrame(label=sim_res$cell_meta$pop),
-                                                                rowData=DataFrame(gene=seq_len(nrow(sim_res$counts))))
-
+    peakMatrix <- SingleCellExperiment(list(peak = sim_res$atacseq_data, peak_obs = sim_res$atacseq_obs),
+                                       colData = DataFrame(label=sim_res$cell_meta$pop),
+                                       rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
+    logcounts <- normalize_counts(sim_res$counts)
+    logcounts <- log2(logcounts+1)
+    logcounts_obs <- normalize_counts(sim_res$counts_obs)
+    logcounts_obs <- log2(logcounts_obs+1)
+    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs,
+                                               logcounts = logcounts, logcounts_obs = logcounts_obs),
+                                          colData = DataFrame(label=sim_res$cell_meta$pop),
+                                          rowData=DataFrame(gene=seq_len(nrow(sim_res$counts))))
     rownames(geneExpMatrix) <- seq_len(nrow(geneExpMatrix))
     rownames(peakMatrix) <- seq_len(nrow(peakMatrix))
-    list(regulon = regulon, peakMatrix = peakMatrix, geneExpMatrix = geneExpMatrix,
-         peakMatrix_obs = peakMatrix_obs, geneExpMatrix_obs = geneExpMatrix_obs)
+    list(regulon = regulon, peakMatrix = peakMatrix, geneExpMatrix = geneExpMatrix)
 }
 
 calculate_interchanges <- function(vec){
@@ -48,19 +54,59 @@ calculate_interchanges <- function(vec){
 }
 
 #' @export
-assessActivityAccuracy <- function(GRN, sim_options, basic_sim_res, activities_obs) {
+removeTF <- function(basic_sim_res, BPPARAM = BiocParallel::MulticoreParam(),
+                     batch_size = 50, sim_options, tfs = NULL){
+    if(is.null(tfs)) tfs <- unique(sim_options$GRN[,2])
+    remaining_tfs <- tfs
+    tf_removal <- list()
+    while(length(remaining_tfs) != 0){
+        chosen_tfs <- sample(remaining_tfs, min(batch_size, length(remaining_tfs)))
+        tryCatch({tf_removal <- c(tf_removal, BiocParallel::bplapply(X = chosen_tfs,
+                                                                     FUN = tf_effect_bp,
+                                                                     sim_options = sim_options,
+                                                                     BPPARAM = BPPARAM))
+        tf_removal <- tf_removal[!sapply(tf_removal, function(x) is.null(x$counts))]
+        remaining_tfs <- setdiff(remaining_tfs, chosen_tfs)
+        message(Sys.time())
+        message(sprintf("Well done. Number of analysed tfs %d", length(tf_removal)))
+        },
+        error = function(cond) {
+            message(Sys.time())
+            message(sprintf("Error. Number of analysed tfs %d", length(tf_removal)))
+            message(cond)},
+        finally = {remaining_tfs <- setdiff(remaining_tfs, chosen_tfs)})
+    }
+    message(Sys.time())
+    names(tf_removal) <- sapply(tf_removal, function(x) x$tf)
+    lapply(tf_removal, function(x) x$counts)
+}
+
+#' @export
+calculateTrueActivityRanks <- function(basic_sim_res, counts_removal, seed = 1010,
+                                       sim_options, transcription_effect = FALSE){
+    set.seed(seed)
+    true_ranks_matrix <- matrix(nrow = length(counts_removal), ncol = sim_options$num.cells,
+                                dimnames = list(names(counts_removal), colnames(basic_sim_res$counts)))
+    for(i in seq_along(counts_removal)){
+        tf <- names(counts_removal)[i]
+        targets <- unique(sim_options$GRN[sim_options$GRN[,2] == tf, 1])
+        counts_diff <- basic_sim_res$counts[targets,,drop = FALSE] - counts_removal[[i]][targets,,drop = FALSE]
+        if(transcription_effect) true_ranks_matrix[tf,] <- colSums(counts_diff)
+        else true_ranks_matrix[tf,] <- rank(colSums(counts_diff), ties.method = "random")
+    }
+    true_ranks_matrix
+}
+
+#' @import BiocParallel
+#' @export
+assessActivityAccuracy <- function(sim_options, activities_obs,
+                                   seed = 1010, true_ranks_matrix) {
     correct_ranks <- list()
     interchanges <- c()
-    tfs <- unique(GRN[,2])
+    tfs <- unique(sim_options$GRN[,2])
+    set.seed(seed)
     for(i in seq_along(tfs)){
-        GRN_removal <- GRN
-        # set weights for a given transcription factor to the values close to 0
-        GRN_removal[GRN_removal$regulator.gene==tfs[i],"regulator.effect"] = 0.00001
-        sim_options$GRN <- GRN_removal
-        sim_res <- scMultiSim::sim_true_counts(sim_options)
-        targets <- unique(GRN[GRN[,2] == tfs[i],1])
-        counts_diff <- basic_sim_res$counts[targets,,drop = FALSE] - sim_res$counts[targets,,drop = FALSE]
-        ranks_true <- rank(colSums(counts_diff), ties.method = "random")
+        ranks_true <- true_ranks_matrix[tfs[i],]
         if (tfs[i] %in% rownames(activities_obs))
             ranks_obs <- rank(activities_obs[as.character(tfs[i]),], ties.method = "random")
         # all activities equal to 0 so the rank order is random
@@ -70,9 +116,26 @@ assessActivityAccuracy <- function(GRN, sim_options, basic_sim_res, activities_o
         interchanges <- c(interchanges, calculate_interchanges(ranks_obs[order(ranks_true)]))
         # use true ranks in the observed order
         correct_ranks[[i]] <- ranks_true[order(ranks_obs)]
+        true_ranks_matrix[tf,] <- ranks_true
     }
     names(interchanges) <- names(correct_ranks) <- tfs
     list(interchange_number = interchanges, correct_ranks = correct_ranks)
+}
+
+#' @import scMultiSim
+tf_effect_bp <- function(tf, sim_options){
+    # set weights for a given transcription factor to the values close to 0
+    sim_options$GRN[sim_options$GRN$regulator.gene==tf,"regulator.effect"] = 1e-10
+    counts <- tryCatch({
+        sim_res <- scMultiSim::sim_true_counts(sim_options)
+        sim_res <- as.list(sim_res)
+        sim_res$counts
+    },
+    error = function(cond){
+        message(cond)
+        NULL
+    })
+    list(tf = tf, counts = counts)
 }
 
 #' @param x integer vector corresponding to the true ranks arranged according to the expected ranks

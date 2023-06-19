@@ -1,3 +1,4 @@
+#' @import basilisk
 #' @export
 get_base_GRN <- function(all_peaks, conns, association_cutoff = 0.8){
     proc = basiliskStart(venv)

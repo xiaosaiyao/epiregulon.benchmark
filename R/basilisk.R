@@ -1,3 +1,4 @@
+#' @import basilisk
 venv <- BasiliskEnvironment(envname="cellOracle",
                               pkgname="epiregulon.benchmark",
                               packages=c("bedtools=2.30.0", "numpy==1.23.5", "cython==0.29.33"),

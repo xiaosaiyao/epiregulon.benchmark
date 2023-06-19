@@ -105,6 +105,7 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     plot_data
 }
 
+#' @import epiregulon
 #' @export
 get_activity_matrix <- function(method = NULL,
                                  GRN = NULL,
@@ -117,11 +118,11 @@ get_activity_matrix <- function(method = NULL,
         # adjust gene names to FigR
         GRN <- GRN[,c("Motif", "DORC", "Score")]
         colnames(GRN) <- c("tf", "target", "weight")
-        return(epiregulon::calculateActivity(expMatrix = geneExprMatrix.sce,
+        return(calculateActivity(expMatrix = geneExprMatrix.sce,
                                                          regulon = GRN))
     }
     else if(method == "Epiregulon"){
-        return(epiregulon::calculateActivity(expMatrix = geneExprMatrix.sce,
+        return(calculateActivity(expMatrix = geneExprMatrix.sce,
                                                          regulon = GRN))
     }
     else if(method == "Pando"){
@@ -145,6 +146,7 @@ get_activity_matrix <- function(method = NULL,
             activity.matrix[i,] <- Seurat_obj@meta.data[[paste0(tf, "_activity1")]]
         }
         rownames(activity.matrix) <- tfs
+        colnames(activity.matrix) <- colnames(Seurat_obj)
         return(activity.matrix)
     }
     else if(method == "cellOracle"){
@@ -161,7 +163,7 @@ get_activity_matrix <- function(method = NULL,
         matrix_columns <- c()
         for (cluster_id in unique_clusters){
             selected_cells <- cluster_cells[[cluster_id]]
-            activity_part <- epiregulon::calculateActivity(expMatrix = geneExprMatrix.sce[,selected_cells],
+            activity_part <- calculateActivity(expMatrix = geneExprMatrix.sce[,selected_cells],
                                                            regulon = regulon[[cluster_id]])
             # add values for tfs which have 0 activity in the cluster
             if (nrow(activity_part) < nrow(activity.matrix)){
@@ -185,6 +187,10 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
                                   labels,
                                   positive_elements_label,
                                   negative_elemetns_label, ...){
+    if(length(positive_elements_label) > 1)
+        positive_elements_label <- paste(positive_elements_label, collapse = "|", sep ="")
+    if(length(negative_elements_label) > 1)
+        negative_elements_label <- paste(negative_elements_label, collapse = "|", sep ="")
     positive_elements_ind <- grep(positive_elements_label, labels)
     negative_elements_ind <- grep(negative_elements_label, labels)
     activity_values <- activity.matrix[tf, ]
