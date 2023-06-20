@@ -103,7 +103,7 @@ assessActivityAccuracy <- function(sim_options, activities_obs,
                                    seed = 1010, true_ranks_matrix) {
     correct_ranks <- list()
     interchanges <- c()
-    tfs <- unique(sim_options$GRN[,2])
+    tfs <- as.character(unique(sim_options$GRN[,2]))
     set.seed(seed)
     for(i in seq_along(tfs)){
         ranks_true <- true_ranks_matrix[tfs[i],]
@@ -116,7 +116,6 @@ assessActivityAccuracy <- function(sim_options, activities_obs,
         interchanges <- c(interchanges, calculate_interchanges(ranks_obs[order(ranks_true)]))
         # use true ranks in the observed order
         correct_ranks[[i]] <- ranks_true[order(ranks_obs)]
-        true_ranks_matrix[tf,] <- ranks_true
     }
     names(interchanges) <- names(correct_ranks) <- tfs
     list(interchange_number = interchanges, correct_ranks = correct_ranks)
@@ -152,4 +151,48 @@ plot_recovery_curve <- function(x, ...){
     y <- y/max(y)
     plot(x, y, xlim = c(0,1), ylim = c(0,1), xlab = "Rank cutoff", ylab = "Proportion of retrieved elements",
          type = "l", ...)
+}
+
+
+#' @export
+addFalseConnections <- function(regulon, fraction_false = 0.5, seed = 10010){
+    set.seed(seed)
+    if(fraction_false<=0 | fraction_false>=1) stop("franction_false argument shoubd be a number from the open set (0,1)")
+    false_rows_n <- round(nrow(regulon)/(1-fraction_false)) - nrow(regulon)
+    false_connections <- data.frame()
+    while(nrow(false_connections) < false_rows_n){
+        tf <- sample(regulon$tf,1)
+        re <- sample(regulon$idxATAC,1)
+        target <- sample(regulon$target,1)
+        new_false_row <- data.frame(tf = tf, idxATAC = re, target = target)
+        if(tail(duplicated(rbind(regulon, new_false_row)), 1)) next
+        false_connections <- rbind(false_connections, new_false_row)
+        }
+    rbind(regulon, false_connections)
+}
+
+#' @export
+getActivity <- function(regulon, geneExpMatrix, peakMatrix,
+                        weightMethods = c("wilcoxon"),
+                        clusters_list = list(), ...){
+    res_list <- list()
+    for(method in weightMethods){
+        clusters <- clusters_list[[method]]
+        regulon.w. <- addWeights(regulon,
+                                 peakMatrix = peakMatrix,
+                                 expMatrix = geneExprMatrix,
+                                 method = method,
+                                 clusters = clusters,
+                                 ...)
+
+        exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
+        score.combine <- calculateActivity(regulon = regulon.wn,
+                                           mode = "weight",
+                                            method = "weightedMean",
+                                            expMatrix = geneExpMatrix,
+                                            exp_assay = exp_assay)
+        res_list[[length(res_list)+1]] <- score.combine
+        names(res_list)[length(res_list)] <- method
+    }
+    res_list
 }
