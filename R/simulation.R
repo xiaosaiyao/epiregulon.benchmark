@@ -8,8 +8,8 @@ build_regulon <- function(sim_res){
     tf_tg <- tf_tg[tf_tg[,3]!=0,1:2]
     colnames(tf_tg) <- c("target", "tf")
     regulon <- merge(re_target, tf_tg)
-    regulon <- lapply(regulon, as.character)
     regulon <- do.call(cbind,regulon) |> as.data.frame()
+    regulon[,c("tf", "target")] <- lapply(regulon[,c("tf", "target")] , as.character)
     regulon[,c("tf", "idxATAC", "target")]
 }
 
@@ -29,12 +29,14 @@ processSimResults <- function(sim_res){
     peakMatrix <- SingleCellExperiment(list(peak = sim_res$atacseq_data, peak_obs = sim_res$atacseq_obs),
                                        colData = DataFrame(label=sim_res$cell_meta$pop),
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
-    logcounts <- normalize_counts(sim_res$counts)
-    logcounts <- log2(logcounts+1)
-    logcounts_obs <- normalize_counts(sim_res$counts_obs)
-    logcounts_obs <- log2(logcounts_obs+1)
+    
+    norm_counts <- normalize_counts(sim_res$counts)
+    logcounts <- log2(norm_counts+1)
+    norm_counts_obs <- normalize_counts(sim_res$counts_obs)
+    logcounts_obs <- log2(norm_counts_obs+1)
     geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs,
-                                               logcounts = logcounts, logcounts_obs = logcounts_obs),
+                                               logcounts = logcounts, logcounts_obs = logcounts_obs,
+                                               norm_counts = norm_counts, norm_counts_obs = norm_counts_obs),
                                           colData = DataFrame(label=sim_res$cell_meta$pop),
                                           rowData=DataFrame(gene=seq_len(nrow(sim_res$counts))))
     rownames(geneExpMatrix) <- seq_len(nrow(geneExpMatrix))
@@ -167,7 +169,9 @@ addFalseConnections <- function(regulon, fraction_false = 0.5, seed = 10010){
         new_false_row <- data.frame(tf = tf, idxATAC = re, target = target)
         if(tail(duplicated(rbind(regulon, new_false_row)), 1)) next
         false_connections <- rbind(false_connections, new_false_row)
-        }
+    }
+    regulon$connection_type <- TRUE
+    false_connections$connection_type <- FALSE
     rbind(regulon, false_connections)
 }
 
@@ -178,19 +182,19 @@ getActivity <- function(regulon, geneExpMatrix, peakMatrix,
     res_list <- list()
     for(method in weightMethods){
         clusters <- clusters_list[[method]]
-        regulon.w. <- addWeights(regulon,
-                                 peakMatrix = peakMatrix,
-                                 expMatrix = geneExprMatrix,
-                                 method = method,
-                                 clusters = clusters,
-                                 ...)
+        regulon.w <- addWeights(regulon,
+                                peakMatrix = peakMatrix,
+                                expMatrix = geneExpMatrix,
+                                method = method,
+                                clusters = clusters,
+                                ...)
 
         exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
-        score.combine <- calculateActivity(regulon = regulon.wn,
+        score.combine <- calculateActivity(regulon = regulon.w,
                                            mode = "weight",
-                                            method = "weightedMean",
-                                            expMatrix = geneExpMatrix,
-                                            exp_assay = exp_assay)
+                                           method = "weightedMean",
+                                           expMatrix = geneExpMatrix,
+                                           exp_assay = exp_assay)
         res_list[[length(res_list)+1]] <- score.combine
         names(res_list)[length(res_list)] <- method
     }
