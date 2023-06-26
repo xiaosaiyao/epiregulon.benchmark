@@ -1,0 +1,126 @@
+---
+title: "Workflows"
+author: "Tomasz Włodarczyk"
+date: "`r Sys.Date()`"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+## Introduction
+
+This is an R Markdown document shows the workflow followed to genarate data that enabled assessement of the transcription
+factor activity.
+
+```{r}
+library(epiregulon.benchmark)
+```
+
+# reprogram-seq
+
+## FigR
+
+```{r echo = FALSE}
+evaluate_workflow = !.check_intermediate("reprogram-seq/FigR_GRN.rds")
+```
+
+
+```{r eval = evaluate_workflow}
+library(FigR)
+library(dplyr)
+library(FNN)
+library(chromVAR)
+library(doParallel)
+library(BuenColors)
+#library(ArchR)
+
+#################
+# DATA LOADING
+#################
+mae <- scMultiome::reprogramSeq()
+peakMatrix.se <- as(mae[["PeakMatrix"]], "RangedSummarizedExperiment")
+assays(peakMatrix.se)[[1]] <- Matrix::Matrix(assay(peakMatrix.se), dimnames = dimnames(assay(peakMatrix.se)),
+                                             ncol = ncol(assay(peakMatrix.se)))
+geneExprMatrix.sce <- mae[["GeneExpressionMatrix"]]
+geneExprMatrix <- as.matrix(assay(geneExprMatrix.sce))
+
+# Remove genes with zero expression across all cells
+geneExprMatrix <- geneExprMatrix[Matrix::rowSums(geneExprMatrix)!=0,]
+
+#################
+#      LSI
+#################
+
+LSI_ATAC <- SingleCellExperiment::reducedDim(mae[["TileMatrix500"]], type= "LSI_ATAC")
+
+# Cell kNN for later use in results smoothing
+cellkNN <- get.knn(LSI_ATAC, k = 30)$nn.index
+
+rownames(cellkNN) <- rownames(LSI_ATAC)
+
+# use cells with both peak and gene expression data
+geneExprMatrix <- geneExprMatrix[,colnames(geneExprMatrix) %in% colnames(peakMatrix.se)]
+
+# Calculate peak to gene correlation
+# default window around each gene: 50000
+names(assays(peakMatrix.se)) <- "counts"
+cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.se,
+                                 RNAmat = geneExprMatrix,
+                                 genome = "hg38",
+                                 nCores = 18,
+                                 p.cut = NULL,
+                                 n_bg = 100,
+                                 windowPadSize = 5e5)
+
+# filter siginificant peak-gene associations
+
+cisCorr.filt <- cisCorr %>% filter(pvalZ <= 0.05)
+
+dorcGenes <- dorcJPlot(dorcTab = cisCorr.filt,
+                             labelTop = 20,
+                             returnGeneList = TRUE,
+                             force = 2)
+
+numDorcs <- cisCorr.filt %>% group_by(Gene) %>% tally() %>%
+    arrange(desc(n))
+
+# calculate domain of regulatory chromatin (DORC) accessibility scores for each gene
+dorcMat <- getDORCScores(ATAC.se = peakMatrix.se,
+                               dorcTab = cisCorr.filt,
+                               geneList = dorcGenes,
+                               nCores = 18)
+
+# smooth DORC scores using cell kNN
+dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = 18)
+
+# smooth gene expression data
+RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = 18)
+
+FigR.GRN <- runFigRGRN(ATAC.se = peakMatrix.se,
+                             dorcTab = cisCorr.filt,
+                             genome = "hg38",
+                             dorcMat = dorcMat.s,
+                             rnaMat = RNAmat.s,
+                             nCores = 18)
+
+intermediate_folder = getOption("epiregulon.benchmark_path_to_intermediates")
+if(!is.null(intermediate_folder)){
+    if(! dir.exists(dirname(file.path(intermediate_folder, "reprogram-seq/FigR_GRN.rds"))))
+        dir.create(file.path(intermediate_folder, "reprogram-seq"), recursive = TRUE)
+    saveRDS(FigR_GRN, file.path(intermediate_folder, "reprogram-seq/FigR_GRN.rds"))
+}
+```
+
+```{r echo = FALSE, eval = !evaluate_workflow}
+FigR_GRN <- readRDS(file.path(getOption("epiregulon.benchmark_path_to_intermediates"), "reprogram-seq/FigR_GRN.rds"))
+```
+

@@ -1,4 +1,4 @@
-```{r cache = TRUE}
+```{r cache = TRUE, results="hide"}
 # based on /gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/analysis/08_epirgulon.R 
 # change: using 'Clusters_Combined' as cluster lables in calculateP2G and pruneRegulon
 
@@ -17,8 +17,7 @@ GeneExpressionMatrix <- getMatrixFromProject(
     useSeqnames = NULL,
     verbose = TRUE,
     binarize = FALSE,
-    threads = getArchRThreads(),
-    logFile = createLogFile("getMatrixFromProject")
+    threads = getArchRThreads()
 )
 
 GeneExpressionMatrix <- as(GeneExpressionMatrix, "SingleCellExperiment")
@@ -61,7 +60,6 @@ names(assays(peakMatrix)) <- "counts"
 # epiregulon
 # get TF binding
 grl <- getTFMotifInfo(genome = "hg38")
-head(grl)
 
 # peak2gene links
 
@@ -73,7 +71,7 @@ p2g <- calculateP2G(peakMatrix = peakMatrix,
                     peak_assay = "counts",
                     exp_assay = "logcounts",
                     cor_cutoff = 0.5,
-                    clusters = GeneExpressionMatrix$Clusters_Combined
+                    clusters = GeneExpressionMatrix$Cellline
 )
 
 
@@ -86,15 +84,18 @@ regulon_df_full <- getRegulon(p2g, overlap, aggregate = FALSE)
 # prune network
 
 pruned.regulon <- pruneRegulon(regulon = regulon_df_full[regulon_df_full$tf %in%
-                                                             c("FOXA1","AR","SMARCA4"),],
+                                                             c("AR","SMARCA4", "SMARCA2"),],
                                expMatrix = GeneExpressionMatrix,
                                exp_assay = "logcounts",
                                peakMatrix = peakMatrix,
                                peak_assay = "counts",
                                exp_cutoff = NULL,
                                prune_value = "pval",
-                               clusters = GeneExpressionMatrix$Clusters_Combined
+                               clusters = GeneExpressionMatrix$Cellline
                                )
+```
+
+```{r echo= FALSE}
 # free memory
 rm(proj)
 ```

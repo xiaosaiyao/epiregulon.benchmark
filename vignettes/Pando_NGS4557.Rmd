@@ -1,0 +1,85 @@
+```{r cache = TRUE}
+library(Signac)
+library(Seurat)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(ArchR)
+library(Pando)
+library(SingleCellExperiment)
+library(foreach)
+library(epiregulon.benchmark)
+ArchR_proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr")
+geneExpr.sce <- getMatrixFromProject(ArchR_proj, "GeneExpressionMatrix")
+geneExprCounts <- assays(geneExpr.sce)$logcounts
+GEX_assay <- CreateAssayObject(data = as.matrix(geneExprCounts))
+
+Seurat_obj <- CreateSeuratObject(counts = GEX_assay, assay ="RNA")
+
+# add hash tag data
+Seurat_obj <- AddMetaData(Seurat_obj, metadata = geneExprMatrix$hash_assignment,
+                                  col.name = "hash_assignment")
+
+data("geneAnnoHg38", package = "epiregulon.benchmark")
+
+# add biotype column required by Signac
+annotations <- geneAnnoHg38$genes
+
+mcols(annotations)$gene_name <- mcols(annotations)$symbol
+
+
+# add peak counts
+peakMatrix <- getMatrixFromProject(ArchR_proj, "PeakMatrix")
+peakCounts <- assay(peakMatrix)
+peakRanges <- rowRanges(peakMatrix)
+peakRanges <- paste(seqnames(peakRanges), ranges(peakRanges) ,sep = "-")
+rownames(peakCounts) <- peakRanges
+peakCounts <- as(peakCounts, "dgCMatrix")
+
+frag_1 <- CreateFragmentObject("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/atac_fragments.tsv.gz")
+
+frag_2 <- CreateFragmentObject("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/atac_fragments.tsv.gz")
+
+Seurat_obj[["peaks"]] <- CreateChromatinAssay(counts = peakCounts,
+                                                      fragments = list(frag_1, frag_2),
+                                                      annotation = annotations)
+
+#####################
+# SEQUENCES FILTERING
+#####################
+# remove peaks corresponding to the sequences which are not present in the reference genome
+missing_sequences <- setdiff(as.character(levels(Seurat_obj@assays$peaks@ranges@seqnames@values)),
+                             names(BSgenome.Hsapiens.UCSC.hg38))
+
+peaks_assay <- GetAssay(Seurat_obj, assay = "peaks")
+Seurat_obj@assays$peaks <- subset(peaks_assay, features = rownames(peaks_assay)[!as.character(seqnames(Seurat_obj@assays$peaks@ranges)) %in% missing_sequences])
+
+##########
+# Pando workflow
+##########
+
+Seurat_obj <- as(Seurat_obj, "SeuratPlus")
+
+# Select variable features (restrict genes to those which are highly variable)
+Seurat_obj <- Seurat::FindVariableFeatures(Seurat_obj, assay='RNA')
+
+DefaultAssay(Seurat_obj) <- "RNA"
+
+# Get motif data
+data(motifs)
+
+# Initiate GRN object and select candidate regions
+Seurat_obj <- initiate_grn(Seurat_obj,
+                                   rna_assay = "RNA",
+                                   exclude_exons = FALSE)
+
+# Scan candidate regions for TF binding motifs
+Seurat_obj <- find_motifs(
+    Seurat_obj,
+    pfm = motifs,
+    genome = BSgenome.Hsapiens.UCSC.hg38
+)
+
+# Infer gene regulatory network (only variable features are taken)
+Seurat_obj <- infer_grn(Seurat_obj,
+                                parallel = TRUE)
+
+```

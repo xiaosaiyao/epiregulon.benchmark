@@ -84,7 +84,7 @@ all_peaks <- data.frame(x = all_peaks)
 #use_condaenv(condaenv = "/gstore/home/wlodarct/miniforge3/envs/test")
 ```
 
-```{r cache = TRUE}
+```{r}
 library(basilisk)
 library(reticulate)
 # use lower association_cutoff than value used in the cellOracle tutorial
@@ -94,7 +94,7 @@ barcodes_list <- colnames(mae[["GeneExpressionMatrix"]])
 barcodes_list <- gsub("reprogram#", "", barcodes_list)
 HTO_list <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment
 ```
-```{r cache = TRUE}
+```{r}
 adata <- get_annotated_data(barcodes_list, HTO_list)
 links <- calculate_GRN(adata, base_GRN)
 louvain_clusters <- adata$obs$louvain

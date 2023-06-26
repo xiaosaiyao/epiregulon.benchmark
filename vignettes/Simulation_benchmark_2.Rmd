@@ -95,7 +95,8 @@ df <- data.frame()
 cat("Number of transcription factors retained:\n")
 for(i in seq_along(score_matrices)){
     cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
-    method_res <- assessActivityAccuracy(activities_obs = score_matrices[[i]],
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
                                          true_ranks_matrix = true_ranks_matrix)
 
     df <- rbind(df, data.frame(tf = names(method_res$interchange_number), 
@@ -124,7 +125,8 @@ df <- data.frame()
 cat("Number of transcription factors retained:\n")
 for(i in seq_along(score_matrices)){
     cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
-    method_res <- assessActivityAccuracy(activities_obs = score_matrices[[i]],
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
                                          true_ranks_matrix = true_ranks_matrix)
 
     df <- rbind(df, data.frame(tf = names(method_res$interchange_number), method = names(score_matrices)[i], 
@@ -153,7 +155,8 @@ df <- data.frame()
 cat("Number of transcription factors retained:\n")
 for(i in seq_along(score_matrices)){
     cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
-    method_res <- assessActivityAccuracy(activities_obs = score_matrices[[i]],
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
                                          true_ranks_matrix = true_ranks_matrix)
 
     df <- rbind(df, data.frame(tf = names(method_res$interchange_number), 
@@ -167,7 +170,9 @@ boxplot(df$interchanges~df$method, xlab = "Weight method", ylab = "Rankings mism
 
 ```{r}
 # calculate ranking mismatch score for true counts analysed using wilcoxon method in addWeights
-ranking_accuracy_wilcoxon <- assessActivityAccuracy(activities_obs = score_matrices_true_counts$wilcoxon, true_ranks_matrix = true_ranks_matrix)
+ranking_accuracy_wilcoxon <- assessActivityAccuracy(sim_options = options_,
+                                    activities_obs = score_matrices_true_counts$wilcoxon,
+                                    true_ranks_matrix = true_ranks_matrix)
 
 # determine number of target genes per tf
 target_number <- split(options_$GRN,options_$GRN$regulator.gene) |> 
@@ -179,64 +184,130 @@ df <- data.frame(interchange_number = ranking_accuracy_wilcoxon$interchange_numb
 plot(df$interchange_number~df$target_number, main = "Effect of regulon size on the accuracy of prediction of\ntranscription factor activity", xlab = "Number of target genes per transcription factor", ylab = "Rankings mismatch score", pch = 16, cex = 0.5)
 ```
 
-# Effect of the network pruning 
-
-Now let's check the methods' performance by adding false connections and playing around with different cutoff values 
-for the output from `pruneRegulon` function. By default we use moving cutoffs for binarization of 
-peak and gene expression data. Moreover, only normalized true counts and true peak data are analysed.
-We start from 50% of false connections in the regulon.
+# Effect of the network pruning (fixed cutoff, normalized counts)
 
 ```{r cache = TRUE}
 regulon.mixed <- addFalseConnections(input_objects$regulon) 
-accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
-    ggplot(aes(x = method, y = interchanges, label = n_tf))+
-    geom_boxplot()+
-    stat_summary(fun = median, geom = "label")+
-    facet_wrap(~pval_cutoff, ncol = 2)+
-    xlab("Weights method")+
-    ylab("Interchange number")+
-    ggtitle("Rankings mismatch using different p-val cutoffs\n50% of false connections")
+pruned.regulon <-  pruneRegulon(regulon = regulon.mixed,
+                                expMatrix = input_objects$geneExpMatrix,
+                               exp_assay = "norm_counts",
+                               peakMatrix = input_objects$peakMatrix,
+                               peak_assay = "peak",
+                               test = "chi.sq",
+                               clusters = input_objects$geneExpMatrix$label,
+                               prune_value = "pval",
+                               regulon_cutoff = 0.05)
+
+score_matrices <- getActivity(regulon = pruned.regulon,
+                              geneExpMatrix = input_objects$geneExpMatrix,
+                              peakMatrix = input_objects$peakMatrix,
+                              weightMethods = c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
+                              clusters_list = clusters_list,
+                              exp_assay = "norm_counts",
+                              peak_assay = "peak")
+
 ```
-## Contaminating regulon with 65% of false connections
+
+```{r echo = FALSE, cache = TRUE}
+df <- data.frame()
+cat("Number of transcription factors retained:\n")
+for(i in seq_along(score_matrices)){
+    cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
+                                         true_ranks_matrix = true_ranks_matrix)
+
+
+    df <- rbind(df, data.frame(tf = names(method_res$interchange_number), method = names(score_matrices)[i], 
+                               interchanges = method_res$interchange_number))
+}
+boxplot(df$interchanges~df$method, xlab = "Weight method", ylab = "Rankings mismatch", main = "Rankings mismatch after regulon pruning")
+```
+
+
+# Effect of the network pruning (moving cutoff, normalized counts)
 
 ```{r cache = TRUE}
-regulon.mixed <- addFalseConnections(input_objects$regulon, fraction_false = 0.65) 
-accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
-    ggplot(aes(x = method, y = interchanges, label = n_tf))+
-    geom_boxplot()+
-    stat_summary(fun = median, geom = "label")+
-    facet_wrap(~pval_cutoff, ncol = 2)+
-    xlab("Weights method")+
-    ylab("Interchange number")+
-    ggtitle("Rankings mismatch using different p-val cutoffs\n65% of false connections")
+pruned.regulon <-  pruneRegulon(regulon = regulon.mixed,
+                                expMatrix = input_objects$geneExpMatrix,
+                               exp_assay = "norm_counts",
+                               peakMatrix = input_objects$peakMatrix,
+                               peak_assay = "peak",
+                               test = "chi.sq",
+                               clusters = input_objects$geneExpMatrix$label,
+                               prune_value = "pval",
+                               regulon_cutoff = 0.05,
+                               exp_cutoff = NULL,
+                               peak_cutoff = NULL)
+
+score_matrices <- getActivity(regulon = pruned.regulon,
+                              geneExpMatrix = input_objects$geneExpMatrix,
+                              peakMatrix = input_objects$peakMatrix,
+                              weightMethods = c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
+                              clusters_list = clusters_list,
+                              exp_assay = "norm_counts",
+                              peak_assay = "peak")
+
 ```
 
-## Contaminating regulon with 80% of false connections
+```{r echo = FALSE, cache = TRUE}
+df <- data.frame()
+cat("Number of transcription factors retained:\n")
+for(i in seq_along(score_matrices)){
+    cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
+                                         true_ranks_matrix = true_ranks_matrix)
+
+
+    df <- rbind(df, data.frame(tf = names(method_res$interchange_number), method = names(score_matrices)[i], 
+                               interchanges = method_res$interchange_number))
+}
+
+boxplot(df$interchanges~df$method, xlab = "Weight method", ylab = "Rankings mismatch", main = "Rankings mismatch after regulon pruning\nwith the use of moving cutoff")
+```
+
+
+# Effect of the network pruning (moving cutoff, normalized counts, peak data disregerded)
 
 ```{r cache = TRUE}
-regulon.mixed <- addFalseConnections(input_objects$regulon, fraction_false = 0.8) 
-accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
-    ggplot(aes(x = method, y = interchanges, label = n_tf))+
-    geom_boxplot()+
-    stat_summary(fun = median, geom = "label")+
-    facet_wrap(~pval_cutoff, ncol = 2)+
-    xlab("Weights method")+
-    ylab("Interchange number")+
-    ggtitle("Rankings mismatch using different p-val cutoffs\n80% of false connections")
+pruned.regulon <-  pruneRegulon(regulon = regulon.mixed,
+                                expMatrix = input_objects$geneExpMatrix,
+                               exp_assay = "norm_counts",
+                               peakMatrix = input_objects$peakMatrix,
+                               peak_assay = "peak",
+                               test = "chi.sq",
+                               clusters = input_objects$geneExpMatrix$label,
+                               prune_value = "pval",
+                               regulon_cutoff = 0.05,
+                               exp_cutoff = NULL,
+                               peak_cutoff = -1)
+
+score_matrices <- getActivity(regulon = pruned.regulon,
+                              geneExpMatrix = input_objects$geneExpMatrix,
+                              peakMatrix = input_objects$peakMatrix,
+                              weightMethods = c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
+                              clusters_list = clusters_list,
+                              exp_assay = "norm_counts",
+                              peak_assay = "peak")
+
 ```
 
-## Removing 50% of true connections and contaminating regulon with 80% of false connections
-```{r cache = TRUE}
-set.seed(1110)
-# remove part of the true connections
-keep_ind <- sample(1:nrow(input_objects$regulon), round(nrow(input_objects$regulon)/2))
-regulon.mixed <- addFalseConnections(input_objects$regulon[keep_ind,], fraction_false = 0.8) 
-accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
-    ggplot(aes(x = method, y = interchanges, label = n_tf))+
-    geom_boxplot()+
-    stat_summary(fun = median, geom = "label")+
-    facet_wrap(~pval_cutoff, ncol = 2)+
-    xlab("Weights method")+
-    ylab("Interchange number")+
-    ggtitle("Rankings mismatch using different p-val cutoffs\n80% of false connections and 50% of true ones")
+```{r echo = FALSE, cache = TRUE}
+df <- data.frame()
+cat("Number of transcription factors retained:\n")
+for(i in seq_along(score_matrices)){
+    cat(sprintf("%15s: %d (%.2f%%)\n", names(score_matrices)[i], nrow(score_matrices[[i]]), nrow(score_matrices[[i]])*100/nrow(true_ranks_matrix)))
+    method_res <- assessActivityAccuracy(sim_options = options_,
+                                         activities_obs = score_matrices[[i]],
+                                         true_ranks_matrix = true_ranks_matrix)
+
+
+    df <- rbind(df, data.frame(tf = names(method_res$interchange_number), method = names(score_matrices)[i], 
+                               interchanges = method_res$interchange_number))
+}
+
+boxplot(df$interchanges~df$method, xlab = "Weight method", ylab = "Rankings mismatch",
+        main = "Rankings mismatch after regulon pruning\nwith the use of moving cutoff")
 ```
+

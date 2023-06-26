@@ -23,6 +23,8 @@ presented in the form of curves showing the relation between false and true posi
 
 # Highlights
 
+- activity calculated based on weights for all cells
+- pruning clusters form lmfit, MI and corr are defined by hash assignment
 - clusters in methods "corr", "lmfit" and "MI" defined by 'Clusters_Combined' column in the gene expression SCE
 - cell line specific weights used for calculation of activity when 'wilcoxon' and 'logFC' methods are used 
 - motif scores added
@@ -36,7 +38,8 @@ presented in the form of curves showing the relation between false and true posi
 # Preparation of the data frame to be plotted
 
 ```{r}
-library(epiregulon.benchmark)
+#library(epiregulon.benchmark)
+devtools::load_all("/gstore/project/lineage/tomek/epiregulon.benchmark/")
 group_combinations_1 <- expand.grid(c("VCaP", "LNCaP"), c("ARV-110", "Enza"), "DMSO", "down", "AR")
 group_combinations_2 <- expand.grid(c("VCaP", "LNCaP"), c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
 group_combinations <- rbind(group_combinations_1, group_combinations_2)
@@ -53,15 +56,17 @@ plot_data <- data.frame()
 arg.list <- list()
 arg.list$peakMatrix = peakMatrix
 arg.list$peak_assay = "counts"
-weight_clusters <- as.list(c(corr = "Clusters_Combined", MI = "Clusters_Combined", lmfit = "Clusters_Combined", logFC = "Cellline", wilcoxon = "Cellline"))
-activity_clusters <- c(corr = NA, MI = NA, lmfit = NA, logFC = "Cellline", wilcoxon = "Cellline")
+########### Chanegd ###################
+weight_clusters <- c(corr = "hash_assignment", MI = "hash_assignment", lmfit = "hash_assignment", logFC = "Cellline", wilcoxon = "Cellline")
+activity_clusters <- c(corr = NA, MI = NA, lmfit = NA, logFC = NA, wilcoxon = NA)
+#######################################
 for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
     arg.list$method = method
     partial_data <- prepare_plot_data(regulon = pruned.regulon,
                                       weight.args = arg.list,
                                       group_combinations = group_combinations,
                                       geneExprMatrix.sce = GeneExpressionMatrix,
-                                      weight_clusters = weight_clusters[[method]],
+                                      weight_clusters = weight_clusters[method],
                                       activity_clusters = activity_clusters[method],
                                       path_to_archR_project = "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/")
     plot_data <- rbind(plot_data, partial_data)

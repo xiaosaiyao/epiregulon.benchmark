@@ -1,0 +1,45 @@
+```{r}
+#devtools::load_all("/gstore/project/lineage/xiaosai/epiregulon/")
+library(epiregulon)
+
+# load the MAE object
+mae <- scMultiome::reprogramSeq()
+
+# peak matrix
+PeakMatrix <- mae[["PeakMatrix"]]
+
+# expression matrix
+GeneExpressionMatrix <- mae[["GeneExpressionMatrix"]]
+rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
+
+# dimensional reduction matrix
+reducedDimMatrix <- reducedDim(mae[['TileMatrix500']], "LSI_ATAC")
+
+grl <- getTFMotifInfo(genome = "hg38")
+
+
+set.seed(1010)
+p2g <- calculateP2G(peakMatrix = PeakMatrix, 
+                    expMatrix = GeneExpressionMatrix, 
+                    reducedDim = reducedDimMatrix)
+
+overlap <- addTFMotifInfo(grl = grl, p2g = p2g, peakMatrix = PeakMatrix)
+
+regulon <- getRegulon(p2g = p2g, overlap = overlap, aggregate = FALSE)
+
+pruned.regulon <- pruneRegulon(expMatrix = GeneExpressionMatrix,
+                               exp_assay = "logcounts",
+                               peakMatrix = PeakMatrix,
+                               peak_assay = "counts",
+                               test = "chi.sq",
+                               regulon,
+                               clusters = GeneExpressionMatrix$Clusters,
+                               prune_value = "pval",
+                               regulon_cutoff = 0.05
+                               )
+
+```
+```{r echo =FALSE}
+#free memory
+rm(mae)
+```
