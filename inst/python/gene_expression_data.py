@@ -2,25 +2,27 @@ import scanpy as sc
 import os
 import anndata as ad
 
-def get_annotated_data(barcodes_list, HTO_list, data_path = ""):
+def get_annotated_data_2(barcodes_list, HTO_list, data_paths = [""], sample_names = None, n_top_genes=2000):
 
-    # indicate directory with the data
-    dataPath = "/gne/data/lab-shares/xie-lab/Sequencing_Data/2022/mapping/20220124_ReprogramSeq_Multiome/JT65_67/outs/"
-    adata = sc.read_10x_h5(os.path.join(dataPath, "filtered_feature_bc_matrix.h5"))
-    adata.var_names_make_unique()
-
-    barcodes_updated = list(set(barcodes_list).intersection(set(adata.obs_names)))
+    # set directory with data
+    adata_list = map(lambda x: sc.read_10x_h5(os.path.join(dataPath_1, "filtered_feature_bc_matrix.h5")), data_paths)
+    adata_list = list(map(lambda x: x.var_names_make_unique(), adata_list))
+    if samples_name:
+        for(i in range(length(adata_list))):
+            adata_list[i].obs_names = list(map(lambda x: sample_names[i]+"#"+x, adata_1.obs_names))
+    if len(data_paths)>1:
+        adatas = dict(zip(sample_names, adata_list))
+        adata = ad.concat(adatas, label = "dataset")
+    if False in list(map(lambda x: x in adata.obs_names, barcodes_list)):
+        raise Exception("All barcodes should be present in the gene expression data")
+    
     adata = adata[barcodes_updated,]
     adata.obs["HTO"] = HTO_list
-    
-    # remove genes not being expressed in any cell; otherwise calling sc.pp.filter_genes_dispersion might raise error
-    non_zero_genes = adata.X.sum(axis=0)>0
-    adata = adata[:,non_zero_genes]
 
-    # Select top 2000 highly-variable genes
+    # Select top highly-variable genes
     filter_result = sc.pp.filter_genes_dispersion(adata.X,
                                                   flavor='cell_ranger',
-                                                  n_top_genes=2000,
+                                                  n_top_genes=n_top_genes,
                                                   log=False)
 
     # Subset the genes
@@ -44,7 +46,6 @@ def get_annotated_data(barcodes_list, HTO_list, data_path = ""):
 
     # Diffusion map
     sc.pp.neighbors(adata, n_neighbors=4, n_pcs=20)
-
 
     sc.tl.diffmap(adata, n_comps = 15)
     # Calculate neihbors again based on diffusionmap

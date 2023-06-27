@@ -125,7 +125,6 @@ colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 
 ```{r cache = TRUE}
 GRN_list[["FigR"]] <- FigR_GRN
-colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 ```
 
 ```{r cache = TRUE}
