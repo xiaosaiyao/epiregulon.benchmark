@@ -8,7 +8,6 @@ build_regulon <- function(sim_res){
     tf_tg <- tf_tg[tf_tg[,3]!=0,1:2]
     colnames(tf_tg) <- c("target", "tf")
     regulon <- merge(re_target, tf_tg)
-    regulon <- do.call(cbind,regulon) |> as.data.frame()
     regulon[,c("tf", "target")] <- lapply(regulon[,c("tf", "target")] , as.character)
     regulon[,c("tf", "idxATAC", "target")]
 }
@@ -29,7 +28,7 @@ processSimResults <- function(sim_res){
     peakMatrix <- SingleCellExperiment(list(peak = sim_res$atacseq_data, peak_obs = sim_res$atacseq_obs),
                                        colData = DataFrame(label=sim_res$cell_meta$pop),
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
-    
+
     norm_counts <- normalize_counts(sim_res$counts)
     logcounts <- log2(norm_counts+1)
     norm_counts_obs <- normalize_counts(sim_res$counts_obs)
@@ -68,7 +67,6 @@ removeTF <- function(basic_sim_res, BPPARAM = BiocParallel::MulticoreParam(),
                                                                      sim_options = sim_options,
                                                                      BPPARAM = BPPARAM))
         tf_removal <- tf_removal[!sapply(tf_removal, function(x) is.null(x$counts))]
-        remaining_tfs <- setdiff(remaining_tfs, chosen_tfs)
         message(Sys.time())
         message(sprintf("Well done. Number of analysed tfs %d", length(tf_removal)))
         },
@@ -101,25 +99,21 @@ calculateTrueActivityRanks <- function(basic_sim_res, counts_removal, seed = 101
 
 #' @import BiocParallel
 #' @export
-assessActivityAccuracy <- function(sim_options, activities_obs,
+assessActivityAccuracy <- function(activities_obs,
                                    seed = 1010, true_ranks_matrix) {
+    if(is.null(activities_obs)) return(NULL)
     correct_ranks <- list()
     interchanges <- c()
-    tfs <- as.character(unique(sim_options$GRN[,2]))
     set.seed(seed)
-    for(i in seq_along(tfs)){
-        ranks_true <- true_ranks_matrix[tfs[i],]
-        if (tfs[i] %in% rownames(activities_obs))
-            ranks_obs <- rank(activities_obs[as.character(tfs[i]),], ties.method = "random")
-        # all activities equal to 0 so the rank order is random
-        else
-            ranks_obs <- sample(1:ncol(activities_obs))
+    for(tf in rownames(activities_obs)){
+        ranks_true <- true_ranks_matrix[tf,]
+        ranks_obs <- rank(activities_obs[tf,], ties.method = "random")
         # use observed ranks in the true order
         interchanges <- c(interchanges, calculate_interchanges(ranks_obs[order(ranks_true)]))
         # use true ranks in the observed order
-        correct_ranks[[i]] <- ranks_true[order(ranks_obs)]
+        correct_ranks[[length(correct_ranks)+1]] <- ranks_true[order(ranks_obs)]
     }
-    names(interchanges) <- names(correct_ranks) <- tfs
+    names(interchanges) <- names(correct_ranks) <- rownames(activities_obs)
     list(interchange_number = interchanges, correct_ranks = correct_ranks)
 }
 
@@ -177,7 +171,7 @@ addFalseConnections <- function(regulon, fraction_false = 0.5, seed = 10010){
 
 #' @export
 getActivity <- function(regulon, geneExpMatrix, peakMatrix,
-                        weightMethods = c("wilcoxon"),
+                        weightMethods =  c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
                         clusters_list = list(), ...){
     res_list <- list()
     for(method in weightMethods){
@@ -199,4 +193,62 @@ getActivity <- function(regulon, geneExpMatrix, peakMatrix,
         names(res_list)[length(res_list)] <- method
     }
     res_list
+}
+
+#' @export
+accuracyComparisonPruning <- function(regulon, input_objects,
+                                      true_ranks_matrix,
+                                      regulon_cutoffs = c(2, 0.05, 0.001, 0.0001),
+                                      exp_cutoff_weights = NULL,
+                                      peak_cutoff_weights = NULL,
+                                      peak_assay = "peak",
+                                      exp_assay = "norm_counts",
+                                      ...){
+    regulon <-  pruneRegulon(regulon = regulon,
+                             expMatrix = input_objects$geneExpMatrix,
+                             exp_assay = exp_assay,
+                             peakMatrix = input_objects$peakMatrix,
+                             peak_assay = peak_assay,
+                             test = "chi.sq",
+                             clusters = input_objects$geneExpMatrix$label,
+                             regulon_cutoff = 2,
+                             ...)
+    df <- data.frame()
+    for(p_val_cutoff in regulon_cutoffs){
+        pruned.regulon <- filterRegulonPVal(regulon, p_val_cutoff)
+        if(nrow(pruned.regulon) == 0) next
+            activity_data <- getActivity(regulon = pruned.regulon,
+                                     geneExpMatrix = input_objects$geneExpMatrix,
+                                     peakMatrix = input_objects$peakMatrix,
+                                    exp_cutoff = exp_cutoff_weights,
+                                    peak_cutoff = peak_cutoff_weights,
+                                    peak_assay = peak_assay,
+                                    exp_assay = exp_assay,
+                                    clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
+                                                       "corr" = input_objects$geneExpMatrix$label,
+                                                       "MI" = input_objects$geneExpMatrix$label))
+        for(i in seq_along(activity_data)){
+            method_res <- assessActivityAccuracy(activities_obs = activity_data[[i]],
+                                                 true_ranks_matrix = true_ranks_matrix)
+            # account for no tf being recovered
+            if(is.null(method_res)) next
+            df_part <- data.frame(tf = names(method_res$interchange_number),
+                                       method = names(activity_data)[i],
+                                       interchanges = method_res$interchange_number)
+            df_part$n_tf <- nrow(activity_data[[i]])
+            df_part$pval_cutoff <- p_val_cutoff
+            df <- rbind(df, df_part)
+        }
+    }
+    df
+}
+
+filterRegulonPVal <- function(regulon, cutoff){
+    min_pval <- apply(regulon$pval, 1, function (x){
+        if (sum(is.na(x)) == length(x))
+            1
+        else
+            min(x, na.rm = TRUE)
+    })
+    regulon[min_pval < cutoff, ]
 }
