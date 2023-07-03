@@ -28,6 +28,8 @@ Suggests:
     ggplot2,
     ape,
     scMultiome,
+    purrr,
+    chromVAR
 Remotes:
     buenrostrolab/FigR,
     ZhangLabGT/scMultiSim
