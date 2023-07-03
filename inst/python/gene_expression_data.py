@@ -18,6 +18,12 @@ def get_annotated_data(barcodes_list, HTO_list, data_paths = [""], sample_names 
     
     adata = adata[barcodes_list,]
     adata.obs["HTO"] = HTO_list
+    
+    # Only consider genes with more than 1 count
+    sc.pp.filter_genes(adata, min_counts=1)
+    
+    # Normalize gene expression matrix with total UMI count per cell
+    sc.pp.normalize_per_cell(adata, key_n_counts='n_counts_all')
 
     # Select top highly-variable genes
     filter_result = sc.pp.filter_genes_dispersion(adata.X,
