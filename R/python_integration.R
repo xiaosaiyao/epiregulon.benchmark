@@ -12,14 +12,18 @@ get_base_GRN <- function(all_peaks, conns, association_cutoff = 0.8){
 }
 
 #' @export
-get_annotated_data <- function(barcodes_list, HTO_list){
+get_annotated_data <- function(barcodes_list, HTO_list, paths_to_data_files, sample_names=NULL, n_top_genes=2000){
     proc = basiliskStart(venv)
     on.exit(basiliskStop(proc))
     adata <- basiliskRun(proc, function(barcodes, HTO){
         source_python(system.file("python/gene_expression_data.py", package = "epiregulon.benchmark"))
-        adata <- get_annotated_data(barcodes, HTO)
+        adata <- get_annotated_data(barcodes, HTO, paths, samples, n_top_genes)
         adata
-    }, barcodes = barcodes_list, HTO = HTO_list)
+    }, barcodes = barcodes_list,
+    HTO = HTO_list,
+    paths = paths_to_data_files,
+    samples = sample_names,
+    n_top_genes = n_top_genes)
     adata
 }
 
