@@ -31,7 +31,7 @@ in the epiregulon package. As a ground truth the data simulated by scMultiSim pa
 ```{r child = "GRN_preparation.Rmd", cache = TRUE, cache.lazy = FALSE}
 ```
 
-```{r child = "basic_simulation.Rmd"}
+```{r child = "basic_simulation_stronger_chromatin_effect.Rmd"}
 ```
 
 ```{r eval = FALSE}
@@ -62,8 +62,8 @@ transcription_difference_matrix <- calculateTrueActivityRanks(basic_sim_res = si
 ```{r echo = FALSE}
 #devtools::install("/gstore/project/epigen/epiregulon.benchmark", dependencies = FALSE)
 #counts_removal <- readRDS("/gstore/scratch/u/wlodarct/counts_removal.rds")
-true_ranks_matrix <- readRDS("/gstore/scratch/u/wlodarct/true_ranks_matrix.rds")
-transcription_difference_matrix <- readRDS("/gstore/scratch/u/wlodarct/transcription_difference_matrix.rds")
+true_ranks_matrix <- readRDS("/gstore/scratch/u/wlodarct/true_ranks_matrix_2.rds")
+transcription_difference_matrix <- readRDS("/gstore/scratch/u/wlodarct/transcription_difference_matrix_2.rds")
 ```
 # Distribution of the library sizes
 
