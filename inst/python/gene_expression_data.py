@@ -16,7 +16,7 @@ def get_annotated_data(barcodes_list, HTO_list, data_paths = [""], sample_names 
     if False in list(map(lambda x: x in adata.obs_names, barcodes_list)):
         raise Exception("All barcodes should be present in the gene expression data")
     
-    adata = adata[barcodes_updated,]
+    adata = adata[barcodes_list,]
     adata.obs["HTO"] = HTO_list
 
     # Select top highly-variable genes
