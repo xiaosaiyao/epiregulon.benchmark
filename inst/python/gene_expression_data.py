@@ -2,7 +2,7 @@ import scanpy as sc
 import os
 import anndata as ad
 
-def get_annotated_data_2(barcodes_list, HTO_list, data_paths = [""], sample_names = None, n_top_genes=2000):
+def get_annotated_data(barcodes_list, HTO_list, data_paths = [""], sample_names = None, n_top_genes=2000):
 
     # set directory with data
     adata_list = map(lambda x: sc.read_10x_h5(os.path.join(dataPath_1, "filtered_feature_bc_matrix.h5")), data_paths)
