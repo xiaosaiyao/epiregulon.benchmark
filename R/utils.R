@@ -165,6 +165,10 @@ get_activity_matrix <- function(method = NULL,
             selected_cells <- cluster_cells[[cluster_id]]
             activity_part <- calculateActivity(expMatrix = geneExprMatrix.sce[,selected_cells],
                                                            regulon = regulon[[cluster_id]])
+            if(is.null(activity_part))
+                activity_part <- matrix(0, ncol = length(selected_cells),
+                                              nrow  = length(tfs),
+                                              dimnames = list(tfs))
             # add values for tfs which have 0 activity in the cluster
             if (nrow(activity_part) < nrow(activity.matrix)){
                 missing_tfs <- setdiff(tfs, rownames(activity_part))
@@ -177,7 +181,7 @@ get_activity_matrix <- function(method = NULL,
         }
         # adjust row order to sce object
         colnames(activity.matrix) <- matrix_columns
-        activity.matrix <- activity.matrix[Matrix::rowSums(activity.matrix)>0,,drop= FALSE]
+        activity.matrix <- activity.matrix[Matrix::rowSums(activity.matrix)!=0,,drop= FALSE]
         return(activity.matrix)
     }
 }
