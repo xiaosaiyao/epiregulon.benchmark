@@ -182,7 +182,7 @@ getActivity <- function(regulon, geneExpMatrix, peakMatrix,
                                 method = method,
                                 clusters = clusters,
                                 ...)
-
+        if(is.null(regulon.w)) next
         exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
         score.combine <- calculateActivity(regulon = regulon.w,
                                            mode = "weight",
