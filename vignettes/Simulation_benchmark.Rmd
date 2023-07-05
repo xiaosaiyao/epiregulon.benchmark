@@ -293,7 +293,7 @@ accuracyComparisonPruning(input_objects$regulon, input_objects, true_ranks_matri
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -349,7 +349,7 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -406,7 +406,7 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -463,7 +463,7 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -523,7 +523,7 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -583,7 +583,7 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix) |>
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
-### Movings cutoffs for pruning
+### Moving cutoffs for pruning
 
 #### True counts
 
@@ -602,6 +602,285 @@ accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
 ```
 
 #### Observed counts
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n90% of the true connections removed\n70% of the remaining connections false")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+# Manipulating data sparsity
+
+We can modify parameters which generate technical noise in our data. We will set non-default values to the following parameters
+- `alpha_mean` which is the the mean of the normal distribution used to sample efficiency with transcripts are captured from the library
+- `alpha_sd` which is the standard deviation of the above distribution, i.e. determined how much cells differ from each other
+- `alpha_gene_meea` which is the mean of the normal distribution from which gene-specific capture effciency will be sampled
+- `alpha_gene_sd` which is the standard deviation for the above distribution
+- `depth_mean`  which is the the mean of the normal distribution used to sample library sequencing depth
+- `depth_sd` which is the standard deviation for the above distribution
+- `observation_prob` which corresponds to the probability that ATACseq count will be included in the final dataset
+- `sd_frac` which controls for the size of the noise relative to the signal of ATACseq.
+
+## Sparsity lesser than default
+```{r cache = TRUE, cache.lazy = FALSE}
+set.seed(11000)
+data("gene_len_pool", package = "scMultiSim")
+gene_len <- sample(gene_len_pool, sim_res$num_genes, replace = FALSE)
+true_counts <- floor(sim_res$counts)
+meta_cell <- sim_res$cell_meta
+sim_res$counts_obs <- True2ObservedCounts(true_counts = true_counts, meta_cell = meta_cell,
+                                          protocol = "UMI", randseed = 0, alpha_mean = 0.5,
+                                          alpha_sd = 0.001, alpha_gene_mean = 1, alpha_gene_sd = 0,
+                                          gene_len = gene_len, depth_mean = 2e5, depth_sd = 1e3)$counts
+
+atac_data <- sim_res$atacseq_data
+
+sim_res$atacseq_obs <- True2ObservedATAC(atac_data, randseed = 0,
+                                           observation_prob = 0.6,
+                                           sd_frac = 0.05)
+
+input_objects <- processSimResults(sim_res)
+```
+
+### Pruning unconataminated regulon
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(input_objects$regulon, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 50% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n50% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 65% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon, 
+                                     fraction_false = 0.65) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n50% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 80% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon, 
+                                     fraction_false = 0.8) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n80% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+### Removing 50% of true connections and contaminating regulon with 80% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+set.seed(1110)
+# remove part of the true connections
+keep_ind <- sample(1:nrow(input_objects$regulon), round(nrow(input_objects$regulon)/2))
+regulon.mixed <- addFalseConnections(input_objects$regulon[keep_ind,], fraction_false = 0.8) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n90% of the true connections removed\n70% of the remaining connections false")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+## Sparsity greater than default
+```{r cache = TRUE, cache.lazy = FALSE}
+set.seed(11000)
+data("gene_len_pool", package = "scMultiSim")
+gene_len <- sample(gene_len_pool, sim_res$num_genes, replace = FALSE)
+true_counts <- floor(sim_res$counts)
+meta_cell <- sim_res$cell_meta
+sim_res$counts_obs <- True2ObservedCounts(true_counts = true_counts, meta_cell = meta_cell,
+                                          protocol = "UMI", randseed = 0, alpha_mean = 0.3,
+                                          alpha_sd = 0.005, alpha_gene_mean = 0.75, alpha_gene_sd = 0.05,
+                                          gene_len = gene_len, depth_mean = 5e4, depth_sd = 2e3)$counts
+
+atac_data <- sim_res$atacseq_data
+
+sim_res$atacseq_obs <- True2ObservedATAC(atac_data, randseed = 0,
+                                           observation_prob = 0.2,
+                                           sd_frac = 0.2)
+
+input_objects <- processSimResults(sim_res)
+```
+
+### Pruning unconataminated regulon
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(input_objects$regulon, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 50% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n50% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 65% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon, 
+                                     fraction_false = 0.65) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n50% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Contaminating regulon with 80% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+regulon.mixed <- addFalseConnections(input_objects$regulon, 
+                                     fraction_false = 0.8) 
+```
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
+                          exp_cutoff = NULL,
+                          peak_cutoff = NULL,
+                          exp_assay = "norm_counts_obs",
+                          peak_assay = "peak_obs") |>
+    ggplot(aes(x = method, y = interchanges, label = n_tf))+
+    geom_boxplot()+
+    stat_summary(fun = median, geom = "label")+
+    facet_wrap(~pval_cutoff, ncol = 2)+
+    xlab("Weights method")+
+    ylab("Interchange number")+
+    ggtitle("Rankings mismatch using different p-val cutoffs\n80% of false connections")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+### Removing 50% of true connections and contaminating regulon with 80% of false connections
+
+```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
+set.seed(1110)
+# remove part of the true connections
+keep_ind <- sample(1:nrow(input_objects$regulon), round(nrow(input_objects$regulon)/2))
+regulon.mixed <- addFalseConnections(input_objects$regulon[keep_ind,], fraction_false = 0.8) 
+```
 
 ```{r cache = TRUE, cache.lazy = FALSE, results='hide', fig.keep='all'}
 accuracyComparisonPruning(regulon.mixed, input_objects, true_ranks_matrix,
