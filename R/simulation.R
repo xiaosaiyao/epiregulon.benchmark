@@ -203,6 +203,7 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                                       peak_cutoff_weights = NULL,
                                       peak_assay = "peak",
                                       exp_assay = "norm_counts",
+                                      only_clusters = FALSE,
                                       ...){
     regulon <-  pruneRegulon(regulon = regulon,
                              expMatrix = input_objects$geneExpMatrix,
@@ -215,7 +216,7 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                              ...)
     df <- data.frame()
     for(p_val_cutoff in regulon_cutoffs){
-        pruned.regulon <- filterRegulonPVal(regulon, p_val_cutoff)
+        pruned.regulon <- filterRegulonPVal(regulon, p_val_cutoff, only_clusters = only_clusters)
         if(nrow(pruned.regulon) == 0) next
             activity_data <- getActivity(regulon = pruned.regulon,
                                      geneExpMatrix = input_objects$geneExpMatrix,
@@ -243,12 +244,24 @@ accuracyComparisonPruning <- function(regulon, input_objects,
     df
 }
 
-filterRegulonPVal <- function(regulon, cutoff){
-    min_pval <- apply(regulon$pval, 1, function (x){
-        if (sum(is.na(x)) == length(x))
-            1
-        else
-            min(x, na.rm = TRUE)
-    })
-    regulon[min_pval < cutoff, ]
+filterRegulonPVal <- function(regulon, cutoff, only_clusters = FALSE){
+    if(only_clusters){
+        min_pval <- apply(regulon$pval, 1, function (x){
+            if (sum(is.na(x[2:length(x)])) == length(x)-1)
+                1
+            else
+                min(x[2:length(x)], na.rm = TRUE)
+        })
+        regulon[min_pval < cutoff, ]
+    }
+    else{
+        min_pval <- apply(regulon$pval, 1, function (x){
+            if (sum(is.na(x)) == length(x))
+                1
+            else
+                min(x, na.rm = TRUE)
+        })
+        regulon[min_pval < cutoff, ]
+    }
+    regulon
 }
