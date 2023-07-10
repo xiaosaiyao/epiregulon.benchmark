@@ -56,7 +56,7 @@ calculate_interchanges <- function(vec){
 
 #' @export
 removeTF <- function(basic_sim_res, BPPARAM = BiocParallel::MulticoreParam(),
-                     batch_size = 50, sim_options, tfs = NULL){
+                     batch_size = 50, sim_options, tfs = NULL, seed=10110){
     if(is.null(tfs)) tfs <- unique(sim_options$GRN[,2])
     remaining_tfs <- tfs
     tf_removal <- list()
@@ -65,6 +65,7 @@ removeTF <- function(basic_sim_res, BPPARAM = BiocParallel::MulticoreParam(),
         tryCatch({tf_removal <- c(tf_removal, BiocParallel::bplapply(X = chosen_tfs,
                                                                      FUN = tf_effect_bp,
                                                                      sim_options = sim_options,
+                                                                     seed = seed,
                                                                      BPPARAM = BPPARAM))
         tf_removal <- tf_removal[!sapply(tf_removal, function(x) is.null(x$counts))]
         message(Sys.time())
@@ -118,10 +119,11 @@ assessActivityAccuracy <- function(activities_obs,
 }
 
 #' @import scMultiSim
-tf_effect_bp <- function(tf, sim_options){
+tf_effect_bp <- function(tf, sim_options, seed){
     # set weights for a given transcription factor to the values close to 0
     sim_options$GRN[sim_options$GRN$regulator.gene==tf,"regulator.effect"] = 1e-10
     counts <- tryCatch({
+        set.seed(seed)
         sim_res <- scMultiSim::sim_true_counts(sim_options)
         sim_res <- as.list(sim_res)
         sim_res$counts
@@ -252,7 +254,7 @@ filterRegulonPVal <- function(regulon, cutoff, only_clusters = FALSE){
             else
                 min(x[2:length(x)], na.rm = TRUE)
         })
-        regulon[min_pval < cutoff, ]
+        regulon <- regulon[min_pval < cutoff, ]
     }
     else{
         min_pval <- apply(regulon$pval, 1, function (x){
@@ -261,7 +263,7 @@ filterRegulonPVal <- function(regulon, cutoff, only_clusters = FALSE){
             else
                 min(x, na.rm = TRUE)
         })
-        regulon[min_pval < cutoff, ]
+        regulon <- regulon[min_pval < cutoff, ]
     }
     regulon
 }
