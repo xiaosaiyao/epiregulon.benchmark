@@ -206,6 +206,7 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                                       peak_assay = "peak",
                                       exp_assay = "norm_counts",
                                       only_clusters = FALSE,
+                                      aggregateCells = FALSE,
                                       ...){
     regulon <-  pruneRegulon(regulon = regulon,
                              expMatrix = input_objects$geneExpMatrix,
@@ -229,7 +230,8 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                                     exp_assay = exp_assay,
                                     clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
                                                        "corr" = input_objects$geneExpMatrix$label,
-                                                       "MI" = input_objects$geneExpMatrix$label))
+                                                       "MI" = input_objects$geneExpMatrix$label),
+                                    aggregateCells = aggregateCells)
         for(i in seq_along(activity_data)){
             method_res <- assessActivityAccuracy(activities_obs = activity_data[[i]],
                                                  true_ranks_matrix = true_ranks_matrix)
