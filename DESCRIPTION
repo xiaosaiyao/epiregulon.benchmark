@@ -29,7 +29,9 @@ Suggests:
     ape,
     scMultiome,
     purrr,
-    chromVAR
+    chromVAR,
+    knitr,
+    rmarkdown
 Remotes:
     buenrostrolab/FigR,
     ZhangLabGT/scMultiSim
