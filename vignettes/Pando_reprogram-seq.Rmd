@@ -21,7 +21,7 @@ Seurat_obj <- CreateSeuratObject(counts = GEX_assay, assay ="RNA")
 Seurat_obj <- AddMetaData(Seurat_obj, metadata = geneExprMatrix$hash_assignment,
                                   col.name = "hash_assignment")
 
-data("geneAnnoHg38", package = "epiregulon.benchmark")
+data("geneAnnoHg38", package = "ArchR")
 
 # add biotype column required by Signac
 annotations <- geneAnnoHg38$genes

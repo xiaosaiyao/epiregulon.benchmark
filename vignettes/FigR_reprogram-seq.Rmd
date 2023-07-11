@@ -35,7 +35,7 @@ names(assays(peakMatrix.se)) <- "counts"
 cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.se,
                                  RNAmat = geneExprMatrix,
                                  genome = "hg38",
-                                 nCores = 18,
+                                 nCores = params$n_cpu,
                                  p.cut = NULL,
                                  n_bg = 100,
                                  windowPadSize = 5e5)
@@ -58,18 +58,18 @@ numDorcs <- cisCorr.filt %>% group_by(Gene) %>% tally() %>%
 dorcMat <- getDORCScores(ATAC.se = peakMatrix.se,
                                dorcTab = cisCorr.filt,
                                geneList = dorcGenes,
-                               nCores = 4)
+                               nCores = params$n_cpu)
 
 # smooth DORC scores using cell kNN
-dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = 4)
+dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = params$n_cpu)
 
 # smooth gene expression data
-RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = 4)
+RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = params$n_cpu)
 
 FigR_GRN <- runFigRGRN(ATAC.se = peakMatrix.se,
                              dorcTab = cisCorr.filt,
                              genome = "hg38",
                              dorcMat = dorcMat.s,
                              rnaMat = RNAmat.s,
-                             nCores = 4)
+                             nCores = params$n_cpu)
 ```

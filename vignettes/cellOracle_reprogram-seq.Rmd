@@ -1,4 +1,4 @@
-```{r cache = TRUE}
+```{r cache = TRUE, cache.lazy = FALSE}
 Sys.setenv("BASILISK_USE_SYSTEM_DIR" = 1)
 library(monocle3)
 library(cicero)
@@ -76,7 +76,7 @@ all_peaks <- unlist(all_peaks)
 all_peaks <- data.frame(x = all_peaks)
 ```
 
-```{r}
+```{r cache = TRUE, cache.lazy = FALSE}
 
 #use_condaenv(params$conda_envir)
 #source_python(system.file("base_GRN.py", package = "epiregulon.benchmark"))
@@ -84,18 +84,22 @@ all_peaks <- data.frame(x = all_peaks)
 #use_condaenv(condaenv = "/gstore/home/wlodarct/miniforge3/envs/test")
 ```
 
-```{r}
+```{r cache = TRUE, cache.lazy = FALSE}
 library(basilisk)
 library(reticulate)
 # use lower association_cutoff than value used in the cellOracle tutorial
 # otherwise only GATA6 and NKX2-1 will not be recovered
 base_GRN <- get_base_GRN(conns, all_peaks, association_cutoff = 0.5)
-barcodes_list <- colnames(mae[["GeneExpressionMatrix"]])
-barcodes_list <- gsub("reprogram#", "", barcodes_list)
-HTO_list <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment
+barcode_tab <- data.frame(barcode = colnames(mae[["GeneExpressionMatrix"]]))
+barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
+barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
+barcode_tab$hash_assignment <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment 
 ```
-```{r}
-adata <- get_annotated_data(barcodes_list, HTO_list)
+```{r cache = TRUE, cache.lazy = FALSE}
+adata <- get_annotated_data(barcode_tab,
+                            paths_to_data_files = params$data_file_paths,
+                            sample_names = "reprogram-seq",
+                            python_library = "cellOracle")
 links <- calculate_GRN(adata, base_GRN)
 louvain_clusters <- adata$obs$louvain
 ```
