@@ -1,0 +1,11 @@
+```{r cache = TRUE, cache.lazy = FALSE}
+# load the MAE object
+mae <- scMultiome::reprogramSeq()
+
+# peak matrix
+PeakMatrix <- mae[["PeakMatrix"]]
+
+# expression matrix
+GeneExpressionMatrix <- mae[["GeneExpressionMatrix"]]
+rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
+```

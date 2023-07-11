@@ -1,0 +1,182 @@
+---
+title: "Comparison of different methods for calculationg weights in epiregulon with the use of reprogram-seq dataset"
+date: "`r Sys.Date()`"
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=TRUE, cache = TRUE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+# Introduction
+This report presents comparison across all method options for weight computation which are available
+in the `epiregulon` package. As a ground truth the reprogram-seq dataset is used. It was generated as a result of the studies in which cells were modified to overexpress a selected transcription factor. The results are
+presented in the form of curves showing the relation between false and true positive rates.
+
+# Regulon preparation
+```{r echo = FALSE}
+regulon <- params$regulon
+eval_regulon = FALSE
+if(is.null(params$regulon)) eval_regulon = TRUE
+```
+```{r child = get_matrices_reprogram-seq.Rmd, cache = TRUE, cache.lazy = FALSE}
+```
+```{r file = params$regulon_script_path, eval = FALSE}
+```
+```{r child = pruned_regulon_reprogram-seq.Rmd, eval = eval_regulon, echo = eval_regulon}
+```
+
+# Preparation of the data frame to be plotted
+
+```{r cache = TRUE}
+library(epiregulon.benchmark)
+group_combinations <- expand.grid("", names(params$treatments), NA, "up", "")
+colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
+control_treatment <- c()
+for(i in seq_along(params$treatments)){
+    if(is.null(params$treatments[[i]]))
+        control_treatment[i] <- get_complementary_names(names(params$treatments)[i], unique(GeneExpressionMatrix$heash_assignment))
+    else
+        control_treatment[i] <- paste0(params$treatments[[i]], collapse = "|")
+}
+
+group_combinations$control_treatment <- control_treatment
+group_combinations$transcription_factor <- unlist(lapply(function(x) map_treatment_to_tf(x, regulon), names(group_combinations$treatments)))
+plot_data <- data.frame()
+```
+
+```{r results = "hide", cache = TRUE, eval = params$include_other_packages}
+arg.list <- list()
+arg.list$peakMatrix = PeakMatrix
+arg.list$peak_assay = "counts"
+weight_clusters  <- as.list(setNames(rep(params$cluster_column, 3), c("corr", "MI", "lmfit")))
+for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
+    arg.list$method = method
+    partial_data <- prepare_plot_data(regulon = regulon,
+                                      weight.args = arg.list,
+                                      group_combinations = group_combinations,
+                                      geneExprMatrix.sce = GeneExpressionMatrix,
+                                      weight_clusters = weight_clusters[[method]],
+                                      activity_clusters = NA)
+    plot_data <- rbind(plot_data, partial_data)
+}
+
+```
+
+```{r cache = TRUE, eval = params$include_other_packages}
+library(dplyr)
+library(ggplot2)
+
+ggplot(plot_data, aes(x=FPR, y=TPR))+
+    geom_line()+
+    facet_grid(treatment~method)+
+    xlab("False positive rate")+
+    ylab("True positive rate")+
+    ggtitle("ROC curves for reprogram-seq dataset")
+
+
+AUC_data <- plot_data %>% group_by(cell_line, treatment, method, tf) %>%
+    group_map(function(x,y) cbind(y, data.frame(AUC = calculate_AUC(x$FPR, x$TPR))))
+AUC_data <- do.call(rbind, AUC_data)
+
+print(AUC_data)
+```
+```{r echo = FALSE}
+if(!is.null(params$output_file_summary)) write.csv(AUC_data, params$output_file_summary)
+```
+```{r cache = TRUE, eval = params$include_other_packages}
+GRN_list <- list()
+weight.args <- list()
+# epiregulon workflow
+weight.args$clusters <- as.vector(GeneExpressionMatrix$Clusters)
+weight.args$regulon <- pruned.regulon
+weight.args$expMatrix <- GeneExpressionMatrix
+weight.args$peakMatrix = PeakMatrix
+weight.args$peak_assay = "counts"
+weight.args$method = "corr"
+regulon.w <- do.call(addWeights, weight.args)
+GRN_list[["Epiregulon"]] <- regulon.w
+```
+
+```{r child = "Pando_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```
+
+```{r cache = TRUE, eval = params$include_other_packages}
+Seurat_obj  <- Seurat::RenameCells(Seurat_obj, new.names = paste0("reprogram#", colnames(Seurat_obj))) 
+GRN_list[["Pando"]] <- Seurat_obj 
+```
+
+
+```{r child = "cellOracle_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```
+
+```{r cache = TRUE, eval = params$include_other_packages}
+GRN_list[["cellOracle"]] <- links
+colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
+```
+
+```{r child = "FigR_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```
+
+```{r cache = TRUE, eval = params$include_other_packages}
+GRN_list[["FigR"]] <- FigR_GRN
+```
+
+```{r cache = TRUE, eval = params$include_other_packages}
+saveRDS(GeneExpressionMatrix, "/gstore/scratch/u/wlodarct/GeneExpressionMatrix.rds")
+saveRDS(GRN_list, "/gstore/scratch/u/wlodarct/GRN_list.rds")
+matrices_list <- list()
+for(i in seq_along(GRN_list)){
+    GRN <- GRN_list[[i]]
+    method <- names(GRN_list)[i]
+    activity.matrix <- get_activity_matrix(GRN = GRN,
+                                           method = method,
+                                           geneExprMatrix.sce = GeneExpressionMatrix,
+                                           tfs = c("GATA6", "NKX2-1", "FOXA2"))
+  matrices_list[[i]] <- activity.matrix 
+}
+
+names(matrices_list) <- names(GRN_list)
+```
+
+
+```{r cache = TRUE, eval = params$include_other_packages}
+AUC_table <- data.frame()
+for (tf in c("GATA6", "NKX2-1", "FOXA2")){
+    main_plot = TRUE
+    positive_elements_label <- grep(tf, unique(GeneExpressionMatrix$hash_assignment), value = TRUE)
+    negative_elements_label <- grep(tf, unique(GeneExpressionMatrix$hash_assignment), value = TRUE, invert = TRUE)
+    for(i in seq_along(matrices_list)){
+        activity.matrix <- matrices_list[[i]]
+        if(!tf %in% rownames(activity.matrix)) next
+        labels <- colData(GeneExpressionMatrix[,colnames(activity.matrix)])$hash_assignment
+        if(main_plot) {
+                AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
+                              tf = tf,
+                              labels = labels,
+                              add_plot = FALSE,
+                              positive_elements_label = positive_elements_label,
+                              negative_elements_label = negative_elements_label,
+                              main = sprintf("Reprogram-seq dataset\n%s", tf))
+                main_plot <- FALSE
+        }
+        else{
+            AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
+                                  tf = tf,
+                                  labels = labels,
+                                  add_plot = TRUE,
+                                  positive_elements_label = positive_elements_label,
+                                  negative_elements_label = negative_elements_label)
+        }
+        AUC_table <- rbind(AUC_table, data.frame(AUC = AUC, tf = tf, method = names(matrices_list)[i]))
+    }
+}
+print(AUC_table)
+```
+

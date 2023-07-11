@@ -207,3 +207,18 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
          ylab = "True positive rate", ...)
     return(calculate_AUC(res$FPR, res$TPR))
 }
+
+#' @export
+map_treatment_to_tf <- function(treatment, regulon){
+    all_tfs <- unique(regulon$tf)
+    filter_ind <- unlist(lapply(function(x) grepl(x, gsub("\\.", "-", treatment)), all_tfs))
+    if(length(all_tfs[filter_ind])!=1) stop(sprintf("Treatment group %s should be hit by one transcription factor but is hit by %d",
+                                                    treatment,length(all_tfs[filter_ind])))
+    all_tfs[filter_ind]
+}
+
+#' @export
+get_complementary_names <- function(pattern, group_names){
+    complementary_names <- grep(pattern, group_names, invert = TRUE, value = TRUE)
+    paste0(complementary_names, collpase = "|")
+}
