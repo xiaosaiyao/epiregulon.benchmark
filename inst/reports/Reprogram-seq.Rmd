@@ -25,11 +25,11 @@ regulon <- params$regulon
 eval_regulon = FALSE
 if(is.null(params$regulon)) eval_regulon = TRUE
 ```
-```{r child = get_matrices_reprogram-seq.Rmd, cache = TRUE, cache.lazy = FALSE}
+```{r child = system.file("reports/get_matrices_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy = FALSE}
 ```
 ```{r file = params$regulon_script_path, eval = FALSE}
 ```
-```{r child = pruned_regulon_reprogram-seq.Rmd, eval = eval_regulon, echo = eval_regulon}
+```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), eval = eval_regulon, echo = eval_regulon}
 ```
 
 # Preparation of the data frame to be plotted
@@ -104,7 +104,7 @@ regulon.w <- do.call(addWeights, weight.args)
 GRN_list[["Epiregulon"]] <- regulon.w
 ```
 
-```{r child = "Pando_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
 ```
 
 ```{r cache = TRUE, eval = params$include_other_packages}
@@ -113,7 +113,7 @@ GRN_list[["Pando"]] <- Seurat_obj
 ```
 
 
-```{r child = "cellOracle_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
 ```
 
 ```{r cache = TRUE, eval = params$include_other_packages}
@@ -121,7 +121,7 @@ GRN_list[["cellOracle"]] <- links
 colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 ```
 
-```{r child = "FigR_reprogram-seq.Rmd", cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
 ```
 
 ```{r cache = TRUE, eval = params$include_other_packages}
