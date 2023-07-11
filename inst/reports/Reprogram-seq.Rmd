@@ -5,6 +5,20 @@ output:
   github_document:
     toc: true
     toc_depth: 2
+params:
+    regulon: NULL
+    include_other_packages = FALSE
+    regulon = NULL
+    treatments = list(GATA6 = NULL, NKX2.1 = NULL),
+    output_file_sumary = NULL
+    cluster_column = "Clusters"
+    regulon_script = ""
+    data_file_paths = ""
+    temp_folder = ""
+    conda_exe = ""
+    virtual_env = ""
+    work_dir = ""
+    output_file = "Reprogram-seq.html"
 ---
 
 ```{r setup, include=TRUE, cache = TRUE}

@@ -17,31 +17,9 @@
 #' @param output_file_summary A path to the .html file to which report will be saved.
 #' @param output_file_summary A path to the .csv file to which data frame with the summary of the analysis output will be saved.
 #' @export
-render_report_reprogram_seq <- function(include_other_packages = FALSE,
-                                        regulon = NULL,
-                                        treatments = list(GATA6 = NULL, NKX2.1 = NULL),
-                                        output_file_sumary = NULL,
-                                        cluster_column = "Clusters",
-                                        regulon_script = "",
-                                        data_file_paths = "",
-                                        temp_folder = "",
-                                        conda_exe = "",
-                                        virtual_env = "",
-                                        work_dir = "",
-                                        output_file = "Reprogram-seq.html"){
+render_report_reprogram_seq <- function(...){
     rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
-                      params = list(include_other_packages = include_other_packages,
-                                    regulon = regulon,
-                                    treatments = treatments,
-                                    output_file_sumary = output_file_sumary,
-                                    cluster_column = cluster_column,
-                                    regulon_script_path = regulon_script,
-                                    data_file_paths = data_file_paths,
-                                    temp_folder = temp_folder,
-                                    conda_exe = conda_exe,
-                                    virtual_env = virtual_env,
-                                    work_dir = work_dir
-                                    ))
+                      params = list(...))
 }
 
 #' @export
