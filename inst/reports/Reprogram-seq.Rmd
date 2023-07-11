@@ -7,18 +7,17 @@ output:
     toc_depth: 2
 params:
     regulon: NULL
-    include_other_packages = FALSE
-    regulon = NULL
-    treatments = list(GATA6 = NULL, NKX2.1 = NULL),
-    output_file_sumary = NULL
-    cluster_column = "Clusters"
-    regulon_script = ""
-    data_file_paths = ""
-    temp_folder = ""
-    conda_exe = ""
-    virtual_env = ""
-    work_dir = ""
-    output_file = "Reprogram-seq.html"
+    include_other_packages: FALSE
+    treatments: list(GATA6 = NULL, NKX2.1 = NULL)
+    output_file_sumary: NULL
+    cluster_column: "Clusters"
+    regulon_script: ""
+    data_file_paths: ""
+    temp_folder: ""
+    conda_exe: ""
+    virtual_env: ""
+    work_dir: ""
+    output_file: "Reprogram-seq.html"
 ---
 
 ```{r setup, include=TRUE, cache = TRUE}
@@ -55,13 +54,13 @@ colnames(group_combinations) <- c("cell_line", "experimental_treatment", "contro
 control_treatment <- c()
 for(i in seq_along(params$treatments)){
     if(is.null(params$treatments[[i]]))
-        control_treatment[i] <- get_complementary_names(names(params$treatments)[i], unique(GeneExpressionMatrix$heash_assignment))
+        control_treatment[i] <- get_complementary_names(names(params$treatments)[i], unique(GeneExpressionMatrix$hash_assignment))
     else
         control_treatment[i] <- paste0(params$treatments[[i]], collapse = "|")
 }
 
 group_combinations$control_treatment <- control_treatment
-group_combinations$transcription_factor <- unlist(lapply(function(x) map_treatment_to_tf(x, regulon), names(group_combinations$treatments)))
+group_combinations$transcription_factor <- unlist(lapply(group_combinations$experimental_treatment, function(x) map_treatment_to_tf(x, regulon)))
 plot_data <- data.frame()
 ```
 
