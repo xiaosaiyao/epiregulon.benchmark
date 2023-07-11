@@ -29,7 +29,7 @@ render_report_reprogram_seq <- function(include_other_packages = FALSE,
                                         virtual_env = "",
                                         work_dir = "",
                                         output_file = "Reprogram-seq.html"){
-    rmarkdown::render("Reprogram-seq.Rmd", output_format = "all", output_file = output_file,
+    rmarkdown::render(system.file("vignettes/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
                       params = list(include_other_packages = include_other_packages,
                                     regulon = regulon,
                                     treatments = treatments,

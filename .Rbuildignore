@@ -1,2 +1,7 @@
 ^epiregulon\.benchmark\.Rproj$
 ^\.Rproj\.user$
+^ArchRLogs.*
+sim_res.rds
+^data.*
+^data-raw.*
+^analysis.*
