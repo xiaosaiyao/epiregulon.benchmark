@@ -16,6 +16,7 @@ params:
     conda_exe: ""
     virtual_env: ""
     work_dir: ""
+    n_cpu: 4
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
