@@ -2,6 +2,9 @@
 calculate_AUC <- function(x,y){
  y <- y[order(x)]
  x <- x[order(x)]
+ non_unique_x_ind <- which(duplicated(x))
+ non_unique_x_ind <- unique(non_unique_x_ind, non_unique_x_ind-1)
+ y[non_unique_x_ind] <- sort(y[non_unique_x_ind])
  x_intervals <- diff(x)
  pair_mean_y <- (y[1:(length(y)-1)] + y[2:length(y)])/2
  sum(x_intervals*pair_mean_y)

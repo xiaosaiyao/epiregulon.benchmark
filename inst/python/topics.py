@@ -8,7 +8,7 @@ from pycisTopic.topic_binarization import *
 from pycisTopic.diff_features import *
 from scenicplus.wrappers.run_pycistarget import run_pycistarget
 
-def find_topics(adata, sample_names, paths_to_fragments, work_dir):
+def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir):
     scRNA_bc = adata.obs_names
     cell_data = adata.obs
     cell_data['HTO'] = cell_data['HTO'].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.

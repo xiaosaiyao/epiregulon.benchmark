@@ -1,0 +1,34 @@
+```{r cache = TRUE, cache.lazy = FALSE}
+mae <- scMultiome::reprogramSeq()
+peakMatrix <- mae[["PeakMatrix"]]
+barcode_tab <- data.frame(barcode = colnames(peakMatrix))
+barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
+barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
+barcode_tab$hash_assignment <- colData(peakMatrix)$hash_assignment 
+sample_names <- unique(colData(peakMatrix)$Sample)
+paths_to_matrices <- character(0)
+for (i in seq_along(sample_names)){
+    paths_to_matrices[i] <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
+
+}
+adata <- get_annotated_data(barcode_tab, 
+                            paths_to_data_files = params$data_file_paths,
+                            sample_names = "reprogram-seq",
+                            python_library = "scenicplus")
+
+path_to_peak_matrix <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
+write.table(assay(peakMatrix), file = path_to_peak_matrix,
+                col.names = TRUE, row.names = TRUE, sep = "\t")
+
+reticulate::use_condaenv(condaenv = params$virtual_env, conda = params$conda_exe)
+
+reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+
+cistopic_obj <- find_topics(adata, sample_names = "reprogram_seq", params$data_file_paths, params$work_dir,
+                            params$temp_dir)
+
+reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
+
+run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu)
+
+```
