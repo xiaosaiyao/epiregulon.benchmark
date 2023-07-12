@@ -7,20 +7,18 @@ output:
     toc_depth: 2
 params:
     regulon: NULL
-    include_other_packages: FALSE
     treatments: list(GATA6 = NULL, NKX2.1 = NULL)
     output_file_sumary: NULL
     cluster_column: "Clusters"
     regulon_script: ""
     data_file_paths: ""
-    temp_folder: ""
+    temp_dir: ""
     conda_exe: ""
     virtual_env: ""
     work_dir: ""
-    output_file: "Reprogram-seq.html"
 ---
 
-```{r setup, include=TRUE, cache = TRUE}
+```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
@@ -34,6 +32,7 @@ presented in the form of curves showing the relation between false and true posi
 
 # Regulon preparation
 ```{r echo = FALSE}
+treatments <- eval(parse(text = params$treatments))
 regulon <- params$regulon
 eval_regulon = FALSE
 if(is.null(params$regulon)) eval_regulon = TRUE
@@ -42,19 +41,20 @@ if(is.null(params$regulon)) eval_regulon = TRUE
 ```
 ```{r file = params$regulon_script_path, eval = FALSE}
 ```
-```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), eval = eval_regulon, echo = eval_regulon}
+```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), eval = eval_regulon, echo = eval_regulon, cache=TRUE, cache.lazy=FALSE}
 ```
+
 
 # Preparation of the data frame to be plotted
 
-```{r cache = TRUE}
+```{r cache = TRUE, cache.lazy=FALSE}
 library(epiregulon.benchmark)
-group_combinations <- expand.grid("", names(params$treatments), NA, "up", "")
+group_combinations <- expand.grid("", names(treatments), NA, "up", "")
 colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
 control_treatment <- c()
-for(i in seq_along(params$treatments)){
-    if(is.null(params$treatments[[i]]))
-        control_treatment[i] <- get_complementary_names(names(params$treatments)[i], unique(GeneExpressionMatrix$hash_assignment))
+for(i in seq_along(treatments)){
+    if(is.null(treatments[[i]]))
+        control_treatment[i] <- get_complementary_names(names(treatments)[i], unique(GeneExpressionMatrix$hash_assignment))
     else
         control_treatment[i] <- paste0(params$treatments[[i]], collapse = "|")
 }
@@ -64,7 +64,8 @@ group_combinations$transcription_factor <- unlist(lapply(group_combinations$expe
 plot_data <- data.frame()
 ```
 
-```{r results = "hide", cache = TRUE, eval = params$include_other_packages}
+
+```{r results = "hide", cache = TRUE, cache.lazy=FALSE}
 arg.list <- list()
 arg.list$peakMatrix = PeakMatrix
 arg.list$peak_assay = "counts"
@@ -82,7 +83,7 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
 
 ```
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 library(dplyr)
 library(ggplot2)
 
@@ -100,10 +101,10 @@ AUC_data <- do.call(rbind, AUC_data)
 
 print(AUC_data)
 ```
-```{r echo = FALSE}
+```{r echo = FALSE, cache.lazy=FALSE}
 if(!is.null(params$output_file_summary)) write.csv(AUC_data, params$output_file_summary)
 ```
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list <- list()
 weight.args <- list()
 # epiregulon workflow
@@ -117,31 +118,31 @@ regulon.w <- do.call(addWeights, weight.args)
 GRN_list[["Epiregulon"]] <- regulon.w
 ```
 
-```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
 ```
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 Seurat_obj  <- Seurat::RenameCells(Seurat_obj, new.names = paste0("reprogram#", colnames(Seurat_obj))) 
 GRN_list[["Pando"]] <- Seurat_obj 
 ```
 
 
-```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
 ```
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["cellOracle"]] <- links
 colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 ```
 
-```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, eval = params$include_other_packages}
+```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
 ```
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["FigR"]] <- FigR_GRN
 ```
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 saveRDS(GeneExpressionMatrix, "/gstore/scratch/u/wlodarct/GeneExpressionMatrix.rds")
 saveRDS(GRN_list, "/gstore/scratch/u/wlodarct/GRN_list.rds")
 matrices_list <- list()
@@ -159,7 +160,7 @@ names(matrices_list) <- names(GRN_list)
 ```
 
 
-```{r cache = TRUE, eval = params$include_other_packages}
+```{r cache = TRUE, cache.lazy=FALSE}
 AUC_table <- data.frame()
 for (tf in c("GATA6", "NKX2-1", "FOXA2")){
     main_plot = TRUE

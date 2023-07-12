@@ -1,7 +1,5 @@
 #' Generate the report with the use of reprogram-seq data
 #'
-#' @param include_other_packages A logical indicating whether the raport should present
-#' benchmarking the results using other tools i.e. FigR, Pando, cellOracle and scenic+.
 #' @param regulon A data frame being the output from epiregulon workflow. The weight
 #' column, if present, will be disregarded.
 #' @param regulon_script A full path to the R script file with the code generating the regulon. It
@@ -16,8 +14,10 @@
 #' is stored. By default is is `Clusters`.
 #' @param output_file_summary A path to the .html file to which report will be saved.
 #' @param output_file_summary A path to the .csv file to which data frame with the summary of the analysis output will be saved.
+#' @param motif_score A logical indicating whether motif scores should be added. If so, regulon rows with zero motif score
+#' will have also 0 value for the weight.
 #' @export
-render_report_reprogram_seq <- function(...){
+render_report_reprogram_seq <- function(output_file = file.path(getwd(),"Reprogram-seq_benchmark.html"), ...){
     rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
                       params = list(...))
 }
@@ -29,7 +29,7 @@ render_report_NGS4557 <- function(data_file_paths = "",
                                   conda_exe = "",
                                   virtual_env = "",
                                   work_dir = ""){
-    rmarkdown::render("NGS4557.Rmd", output_format = "all", output_file = "NGS4557.html",
+    rmarkdown::render("", output_format = "all", output_file = "NGS4557.html",
                       params = list(data_file_paths = data_file_paths,
                                     temp_folder = temp_folder,
                                     sample_names = sample_names,
