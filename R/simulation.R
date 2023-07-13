@@ -22,13 +22,12 @@ normalize_counts <- function(count_matrix){
 # return objects needed for epiregulon flow
 #' @import SingleCellExperiment
 #' @export
-processSimResults <- function(sim_res){
+processSimResults <- function(sim_res, seed=23143){
     regulon <- build_regulon(sim_res)
     dimnames(sim_res$counts_obs) <- dimnames(sim_res$counts)
-    peakMatrix <- SingleCellExperiment(list(peak = sim_res$atacseq_data, peak_obs = sim_res$atacseq_obs),
+    peakMatrix <- SingleCellExperiment(list(peak = sim_res$atacseq_counts, peak_obs = sim_res$atacseq_obs),
                                        colData = DataFrame(label=sim_res$cell_meta$pop),
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
-
     norm_counts <- normalize_counts(sim_res$counts)
     logcounts <- log2(norm_counts+1)
     norm_counts_obs <- normalize_counts(sim_res$counts_obs)
@@ -40,6 +39,11 @@ processSimResults <- function(sim_res){
                                           rowData=DataFrame(gene=seq_len(nrow(sim_res$counts))))
     rownames(geneExpMatrix) <- seq_len(nrow(geneExpMatrix))
     rownames(peakMatrix) <- seq_len(nrow(peakMatrix))
+    set.seed(seed)
+    geneExpMatrix <- scran::fixedPCA(geneExpMatrix, name="UMAP_ATAC", subset.row=NULL) # use this name to be consistent with the default epiregulon settings
+    rD <- reducedDim(geneExpMatrix)
+    rownames(rD) <- colnames(peakMatrix)
+    reducedDim(peakMatrix) <- rD
     list(regulon = regulon, peakMatrix = peakMatrix, geneExpMatrix = geneExpMatrix)
 }
 
