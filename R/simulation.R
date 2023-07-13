@@ -44,6 +44,7 @@ processSimResults <- function(sim_res, seed=23143){
     rD <- reducedDim(geneExpMatrix)
     rownames(rD) <- colnames(peakMatrix)
     reducedDim(peakMatrix) <- rD
+    reducedDimNames(peakMatrix) <- "UMAP_ATAC"
     list(regulon = regulon, peakMatrix = peakMatrix, geneExpMatrix = geneExpMatrix)
 }
 
