@@ -30,9 +30,9 @@ processSimResults <- function(sim_res, seed=23143){
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
     norm_counts <- normalize_counts(sim_res$counts)
     logcounts <- log2(norm_counts+1)
-    norm_counts_obs <- normalize_counts(sim_res$counts_obs)
+    norm_counts_obs <- normalize_counts(sim_res$counts_obs$counts)
     logcounts_obs <- log2(norm_counts_obs+1)
-    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs,
+    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs$counts,
                                                logcounts = logcounts, logcounts_obs = logcounts_obs,
                                                norm_counts = norm_counts, norm_counts_obs = norm_counts_obs),
                                           colData = DataFrame(label=sim_res$cell_meta$pop),
