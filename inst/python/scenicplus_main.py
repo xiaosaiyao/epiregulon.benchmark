@@ -10,6 +10,7 @@ import numpy as np
 import pybiomart as pbm
 from scenicplus.scenicplus_class import create_SCENICPLUS_object
 from scenicplus.wrappers.run_scenicplus import run_scenicplus
+from scenicplus.preprocessing.filtering import apply_std_filtering_to_eRegulons
 
 ensembl_version_dict = {'109': 'http://www.ensembl.org',
                                 '108': 'http://oct2022.archive.ensembl.org/',
@@ -96,15 +97,21 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
             upstream = [1000, 150000],
             downstream = [1000, 150000],
             calculate_TF_eGRN_correlation = True,
-            calculate_DEGs_DARs = True,
-            export_to_loom_file = True,
-            export_to_UCSC_file = True,
+            calculate_DEGs_DARs = True,    
+            export_to_loom_file = False,   #non-default
+            export_to_UCSC_file = False,   #non-default
             n_cpu = n_cpu,
             _temp_dir = os.path.join(tmp_dir, 'ray_spill'))
     except Exception as e:
         #in case of failure, still save the object
         dill.dump(scplus_obj, open(os.path.join(work_dir, 'scenicplus/scplus_obj.pkl'), 'wb'), protocol=-1)
         raise(e)
+  
+  # Kepp only eRegulons with an extended annotation if there is no direct annotation available 
+  # (given that the confidence of direct motif annotations is in genral higher). 
+  # Discard eRegulons for which the region-to-gene correlation is negative (these are often noisy). 
+  # Rename the eRegulons so that eRegulons with the suffix TF_+_+ become TF_+ and those with TF_-_+ become TF_-.
+    apply_std_filtering_to_eRegulons(scplus_obj)
 
 
     

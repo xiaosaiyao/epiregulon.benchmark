@@ -16,9 +16,9 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir):
     cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = '/gstore/scratch/u/wlodarct/temp/scenic/peak_matrix.tsv',
                                                       path_to_fragments=fragments_dict[key],
                                                       project = key) for key in fragments_dict.keys()]]
-    cistopic_obj = merge(cistopic_obj_list)
-    cistopic_obj.add_cell_data(cell_data)
-    models=run_cgs_models(cistopic_obj,
+        cistopic_obj = merge(cistopic_obj_list)
+        cistopic_obj.add_cell_data(cell_data)
+        models=run_cgs_models(cistopic_obj,
                     n_topics=[2,4,8,15,20,25,32,38,48],
                     n_cpu=8,
                     n_iter=500,

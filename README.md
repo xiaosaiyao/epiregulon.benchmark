@@ -33,3 +33,4 @@ conda install -c anaconda requests
 - install the latest version of the scMultiSim package
 - use atacseq_counts instead of atacseq_data
 - visualization in the scenic plus workflow 
+- add paths to data files with scores/rankings/tf motifs as report parameters  

@@ -109,8 +109,8 @@ if(!is.null(params$output_file_summary)) write.csv(AUC_data, params$output_file_
 GRN_list <- list()
 weight.args <- list()
 # epiregulon workflow
-weight.args$clusters <- as.vector(GeneExpressionMatrix$Clusters)
-weight.args$regulon <- pruned.regulon
+weight.args$clusters <- as.vector(GeneExpressionMatrix[[params$cluster_column]])
+weight.args$regulon <- regulon
 weight.args$expMatrix <- GeneExpressionMatrix
 weight.args$peakMatrix = PeakMatrix
 weight.args$peak_assay = "counts"
@@ -141,6 +141,9 @@ colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["FigR"]] <- FigR_GRN
+```
+
+```{r child = system.file("reports/Scenic_plus_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}

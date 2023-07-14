@@ -17,10 +17,11 @@ options_ = list(
 
 ```{r eval = FALSE}
 library(scMultiSim)
+set.seed(10110)
 sim_res <- sim_true_counts(options_)
-
 # add noise to gene expression and ATAC-seq data
-add_expr_noise(sim_res)
+set.seed(11000)
+add_expr_noise(sim_res, protocol = "UMI")
 # pointers to objects starting with . will disappear during conversion from environment to list
 .grn <- sim_res$.grn
 sim_res <- as.list(sim_res)

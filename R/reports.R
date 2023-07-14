@@ -24,14 +24,14 @@ render_report_reprogram_seq <- function(output_file = file.path(getwd(),"Reprogr
 
 #' @export
 render_report_NGS4557 <- function(data_file_paths = "",
-                                  temp_folder = "",
+                                  temp_dir = "",
                                   sample_names = "",
                                   conda_exe = "",
                                   virtual_env = "",
                                   work_dir = ""){
     rmarkdown::render("", output_format = "all", output_file = "NGS4557.html",
                       params = list(data_file_paths = data_file_paths,
-                                    temp_folder = temp_folder,
+                                    temp_dir = temp_dir,
                                     sample_names = sample_names,
                                     conda_exe = conda_exe,
                                     virtual_env = virtual_env,
