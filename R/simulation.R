@@ -24,15 +24,15 @@ normalize_counts <- function(count_matrix){
 #' @export
 processSimResults <- function(sim_res, seed=23143){
     regulon <- build_regulon(sim_res)
-    dimnames(sim_res$counts_obs) <- dimnames(sim_res$counts)
+    dimnames(sim_res$counts_obs@counts) <- dimnames(sim_res$counts)
     peakMatrix <- SingleCellExperiment(list(peak = sim_res$atac_counts, peak_obs = sim_res$atacseq_obs),
                                        colData = DataFrame(label=sim_res$cell_meta$pop),
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
     norm_counts <- normalize_counts(sim_res$counts)
     logcounts <- log2(norm_counts+1)
-    norm_counts_obs <- normalize_counts(sim_res$counts_obs$counts)
+    norm_counts_obs <- normalize_counts(sim_res$counts_obs@counts)
     logcounts_obs <- log2(norm_counts_obs+1)
-    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs$counts,
+    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs@counts,
                                                logcounts = logcounts, logcounts_obs = logcounts_obs,
                                                norm_counts = norm_counts, norm_counts_obs = norm_counts_obs),
                                           colData = DataFrame(label=sim_res$cell_meta$pop),
@@ -105,22 +105,14 @@ calculateTrueActivityRanks <- function(basic_sim_res, counts_removal, seed = 101
 
 #' @import BiocParallel
 #' @export
-assessActivityAccuracy <- function(activities_obs,
-                                   seed = 1010, true_ranks_matrix) {
+assessActivityAccuracy <- function(activities_obs, transcription_difference_matrix) {
     if(is.null(activities_obs)) return(NULL)
-    correct_ranks <- list()
-    interchanges <- c()
-    set.seed(seed)
+    correlations <- c()
     for(tf in rownames(activities_obs)){
-        ranks_true <- true_ranks_matrix[tf,]
-        ranks_obs <- rank(activities_obs[tf,], ties.method = "random")
-        # use observed ranks in the true order
-        interchanges <- c(interchanges, calculate_interchanges(ranks_obs[order(ranks_true)]))
-        # use true ranks in the observed order
-        correct_ranks[[length(correct_ranks)+1]] <- ranks_true[order(ranks_obs)]
+        correlations <- c(correlations, corr(activities_obs[tf,], transcription_difference_matrix[tf,], method = "spearman"))
     }
-    names(interchanges) <- names(correct_ranks) <- rownames(activities_obs)
-    list(interchange_number = interchanges, correct_ranks = correct_ranks)
+    names(correlations) <- rownames(activities_obs)
+    correlations
 }
 
 #' @import scMultiSim
@@ -206,8 +198,8 @@ getActivity <- function(regulon, geneExpMatrix, peakMatrix,
 accuracyComparisonPruning <- function(regulon, input_objects,
                                       true_ranks_matrix,
                                       regulon_cutoffs = c(2, 0.05, 0.001, 0.0001),
-                                      exp_cutoff_weights = NULL,
-                                      peak_cutoff_weights = NULL,
+                                      weights_exp_cutoff = NULL,
+                                      weights_peak_cutoff = NULL,
                                       peak_assay = "peak",
                                       exp_assay = "norm_counts",
                                       only_clusters = FALSE,
@@ -226,25 +218,25 @@ accuracyComparisonPruning <- function(regulon, input_objects,
     for(p_val_cutoff in regulon_cutoffs){
         pruned.regulon <- filterRegulonPVal(regulon, p_val_cutoff, only_clusters = only_clusters)
         if(nrow(pruned.regulon) == 0) next
-            activity_data <- getActivity(regulon = pruned.regulon,
+        activity_data <- getActivity(regulon = pruned.regulon,
                                      geneExpMatrix = input_objects$geneExpMatrix,
                                      peakMatrix = input_objects$peakMatrix,
-                                    exp_cutoff = exp_cutoff_weights,
-                                    peak_cutoff = peak_cutoff_weights,
-                                    peak_assay = peak_assay,
-                                    exp_assay = exp_assay,
-                                    clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
-                                                       "corr" = input_objects$geneExpMatrix$label,
-                                                       "MI" = input_objects$geneExpMatrix$label),
-                                    aggregateCells = aggregateCells)
+                                     exp_cutoff = weights_exp_cutoff,
+                                     peak_cutoff = weights_peak_cutoff,
+                                     peak_assay = peak_assay,
+                                     exp_assay = exp_assay,
+                                     clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
+                                                          "corr" = input_objects$geneExpMatrix$label,
+                                                          "MI" = input_objects$geneExpMatrix$label),
+                                     aggregateCells = aggregateCells)
         for(i in seq_along(activity_data)){
             method_res <- assessActivityAccuracy(activities_obs = activity_data[[i]],
-                                                 true_ranks_matrix = true_ranks_matrix)
+                                                 transcription_difference_matrix = transcription_difference_matrix)
             # account for no tf being recovered
             if(is.null(method_res)) next
-            df_part <- data.frame(tf = names(method_res$interchange_number),
-                                       method = names(activity_data)[i],
-                                       interchanges = method_res$interchange_number)
+            df_part <- data.frame(tf = names(method_res),
+                                  method = names(activity_data)[i],
+                                  correlation = method_res)
             df_part$n_tf <- nrow(activity_data[[i]])
             df_part$pval_cutoff <- p_val_cutoff
             df <- rbind(df, df_part)

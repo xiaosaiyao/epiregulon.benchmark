@@ -34,3 +34,5 @@ conda install -c anaconda requests
 - use atacseq_counts instead of atacseq_data
 - visualization in the scenic plus workflow 
 - add paths to data files with scores/rankings/tf motifs as report parameters  
+- making gene names unique after concadetation of adata objects
+- add ncpu parameter to find_topics

@@ -26,7 +26,7 @@ add_expr_noise(sim_res, protocol = "UMI")
 .grn <- sim_res$.grn
 sim_res <- as.list(sim_res)
 sim_res$.grn <- .grn 
-dimnames(sim_res$counts_obs) <- dimnames(sim_res$counts)
+dimnames(sim_res$counts_obs$counts) <- dimnames(sim_res$counts)
 saveRDS(sim_res, "/gstore/scratch/u/wlodarct/sim_res.rds")
 ```
 ```{r echo = TRUE, eval = TRUE}

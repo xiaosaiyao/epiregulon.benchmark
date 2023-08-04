@@ -20,7 +20,6 @@ Depends:
     R (>= 2.10),
     epiregulon,
 Suggests:
-    cicero,
     GenomicRanges,
     ArchR,
     FNN,
@@ -32,9 +31,15 @@ Suggests:
     purrr,
     chromVAR,
     knitr,
-    rmarkdown
+    rmarkdown,
+    FigR,
+    scMultiSim,
+    cicero,
+    monocle3
 Remotes:
     buenrostrolab/FigR,
-    ZhangLabGT/scMultiSim
+    ZhangLabGT/scMultiSim,
+    cole-trapnell-lab/monocle3,
+    cole-trapnell-lab/cicero@monocle3
 LazyData: true
 VignetteBuilder: knitr

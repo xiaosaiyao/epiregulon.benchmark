@@ -3,17 +3,20 @@ import os
 import anndata as ad
 
 def get_annotated_data(barcode_tab, data_paths = [""], sample_names = None, 
-    n_top_genes=2000, mode):
+    n_top_genes=2000, mode = "cellOracle"):
 
     # set directory with data
-    adata_list = map(lambda x: sc.read_10x_h5(os.path.join(x, "filtered_feature_bc_matrix.h5")), data_paths)
+    adata_list = list(map(lambda x: sc.read_10x_h5(os.path.join(x, "filtered_feature_bc_matrix.h5")), data_paths))
     for i in range(len(sample_names)):
-        adata_list[i]['sample_id'] <- sample_names[i]
-        sample_barcodes <- barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["barcode"]
+        adata_list[i].obs['sample_id'] = sample_names[i]
+        adata_list[i].obs_names = list(map(lambda x: x.replace("-", "."), adata_list[i].obs_names))
+        adata_list[i].obs_names = list(map(lambda x: x+"___"+sample_names[i], adata_list[i].obs_names))
+        sample_barcodes = barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["barcode"]
         if False in list(map(lambda x: x in adata_list[i].obs_names, sample_barcodes)):
             raise Exception("All barcodes should be present in the gene expression data")
-        adata_list[i] <- adata_list[i][sample_barcodes,]
-        data_list[i].obs["HTO"] <- barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["hash_assignment"]
+        adata_list[i] = adata_list[i][sample_barcodes,]
+        adata_list[i].obs["HTO"] = barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["hash_assignment"]
+        adata_list[i].var_names_make_unique()
     adatas = dict(zip(sample_names, adata_list))
     adata = ad.concat(adatas, label = "dataset")
     adata.var_names_make_unique()
@@ -81,5 +84,6 @@ def get_annotated_data(barcode_tab, data_paths = [""], sample_names = None,
         # sc.pp.neighbors(adata, n_neighbors=10, n_pcs=10)
         # sc.tl.umap(adata)
         # sc.pl.umap(adata, color = "HTO")
+        
         return adata
     

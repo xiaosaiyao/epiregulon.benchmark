@@ -1,0 +1,526 @@
+
+           ___      .______        ______  __    __  .______      
+          /   \     |   _  \      /      ||  |  |  | |   _  \     
+         /  ^  \    |  |_)  |    |  ,----'|  |__|  | |  |_)  |    
+        /  /_\  \   |      /     |  |     |   __   | |      /     
+       /  _____  \  |  |\  \\___ |  `----.|  |  |  | |  |\  \\___.
+      /__/     \__\ | _| `._____| \______||__|  |__| | _| `._____|
+    
+Logging With ArchR!
+
+Start Time : 2023-07-18 07:19:43.842879
+
+------- ArchR Info
+
+ArchRThreads = 14
+
+------- System Info
+
+Computer OS = unix
+
+------- Session Info
+
+R version 4.3.0 (2023-04-21)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 18.04.6 LTS
+
+Matrix products: default
+BLAS:   /usr/local/lib/R/lib/libRblas.so 
+LAPACK: /usr/local/lib/R/lib/libRlapack.so;  LAPACK version 3.11.0
+
+Random number generation:
+ RNG:     L'Ecuyer-CMRG 
+ Normal:  Inversion 
+ Sample:  Rejection 
+ 
+locale:
+ [1] LC_CTYPE=en_US.UTF-8 LC_NUMERIC=C         LC_TIME=C            LC_COLLATE=C         LC_MONETARY=C        LC_MESSAGES=C       
+ [7] LC_PAPER=C           LC_NAME=C            LC_ADDRESS=C         LC_TELEPHONE=C       LC_MEASUREMENT=C     LC_IDENTIFICATION=C 
+
+time zone: Etc/UTC
+tzcode source: system (glibc)
+
+attached base packages:
+[1] grid      stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] epiregulon_1.0.27           BiocParallel_1.35.3         rhdf5_2.45.1                RcppArmadillo_0.12.4.1.0   
+ [5] Rcpp_1.0.11                 Matrix_1.6-0                sparseMatrixStats_1.13.0    data.table_1.14.8          
+ [9] stringr_1.5.0               plyr_1.8.8                  magrittr_2.0.3              gtable_0.3.3               
+[13] gtools_3.9.4                gridExtra_2.3               devtools_2.4.5              usethis_2.1.6              
+[17] ArchR_1.0.3                 scater_1.29.0               ggplot2_3.4.2               scran_1.29.0               
+[21] scuttle_1.11.0              SingleCellExperiment_1.23.0 SummarizedExperiment_1.31.1 Biobase_2.61.0             
+[25] GenomicRanges_1.53.1        GenomeInfoDb_1.37.2         IRanges_2.35.2              S4Vectors_0.39.1           
+[29] BiocGenerics_0.47.0         MatrixGenerics_1.13.0       matrixStats_1.0.0          
+
+loaded via a namespace (and not attached):
+  [1] GSVA_1.49.2                        fs_1.6.2                           spatstat.sparse_3.0-2             
+  [4] bitops_1.0-7                       httr_1.4.6                         RColorBrewer_1.1-3                
+  [7] profvis_0.3.8                      tools_4.3.0                        sctransform_0.3.5                 
+ [10] utf8_1.2.3                         R6_2.5.1                           HDF5Array_1.29.3                  
+ [13] lazyeval_0.2.2                     uwot_0.1.16                        rhdf5filters_1.13.4               
+ [16] urlchecker_1.0.1                   withr_2.5.0                        sp_2.0-0                          
+ [19] prettyunits_1.1.1                  progressr_0.13.0                   cli_3.6.1                         
+ [22] Cairo_1.6-0                        spatstat.explore_3.2-1             Seurat_4.3.0.1                    
+ [25] spatstat.data_3.0-1                ggridges_0.5.4                     pbapply_1.7-2                     
+ [28] Rsamtools_2.17.0                   parallelly_1.36.0                  sessioninfo_1.2.2                 
+ [31] BSgenome_1.69.0                    limma_3.57.6                       rstudioapi_0.14                   
+ [34] RSQLite_2.3.1                      BiocIO_1.11.0                      generics_0.1.3                    
+ [37] ica_1.0-3                          spatstat.random_3.1-5              dplyr_1.1.2                       
+ [40] ggbeeswarm_0.7.2                   fansi_1.0.4                        abind_1.4-5                       
+ [43] terra_1.7-39                       lifecycle_1.0.3                    yaml_2.3.7                        
+ [46] edgeR_3.43.7                       SparseArray_1.1.10                 BiocFileCache_2.9.1               
+ [49] Rtsne_0.16                         blob_1.2.4                         promises_1.2.0.1                  
+ [52] dqrng_0.3.0                        ExperimentHub_2.9.1                crayon_1.5.2                      
+ [55] dir.expiry_1.9.0                   miniUI_0.1.1.1                     lattice_0.21-8                    
+ [58] beachmat_2.17.13                   cowplot_1.1.1                      annotate_1.79.0                   
+ [61] KEGGREST_1.41.0                    pillar_1.9.0                       knitr_1.43                        
+ [64] metapod_1.9.0                      rjson_0.2.21                       boot_1.3-28.1                     
+ [67] future.apply_1.11.0                codetools_0.2-19                   leiden_0.4.3                      
+ [70] glue_1.6.2                         remotes_2.4.2                      MultiAssayExperiment_1.27.0       
+ [73] vctrs_0.6.3                        png_0.1-8                          cachem_1.0.8                      
+ [76] xfun_0.39                          S4Arrays_1.1.4                     mime_0.12                         
+ [79] survival_3.5-5                     statmod_1.5.0                      bluster_1.11.3                    
+ [82] interactiveDisplayBase_1.39.0      ellipsis_0.3.2                     fitdistrplus_1.1-11               
+ [85] scMultiome_1.1.0                   ROCR_1.0-11                        nlme_3.1-162                      
+ [88] bit64_4.0.5                        filelock_1.0.2                     RcppAnnoy_0.0.21                  
+ [91] rprojroot_2.0.3                    irlba_2.3.5.1                      vipor_0.4.5                       
+ [94] KernSmooth_2.23-22                 colorspace_2.1-0                   DBI_1.1.3                         
+ [97] tidyselect_1.2.0                   processx_3.8.1                     bit_4.0.5                         
+[100] compiler_4.3.0                     curl_5.0.0                         graph_1.79.0                      
+[103] BiocNeighbors_1.19.0               BSgenome.Mmusculus.UCSC.mm10_1.4.3 basilisk.utils_1.13.2             
+[106] desc_1.4.2                         DelayedArray_0.27.9                plotly_4.10.2                     
+[109] rtracklayer_1.61.0                 scales_1.2.1                       lmtest_0.9-40                     
+[112] callr_3.7.3                        rappdirs_0.3.3                     digest_0.6.31                     
+[115] goftest_1.2-3                      spatstat.utils_3.0-3               minqa_1.2.5                       
+[118] rmarkdown_2.23                     BSgenome.Hsapiens.UCSC.hg19_1.4.3  basilisk_1.13.1                   
+[121] XVector_0.41.1                     htmltools_0.5.5                    pkgconfig_2.0.3                   
+[124] lme4_1.1-34                        dbplyr_2.3.3                       fastmap_1.1.1                     
+[127] rlang_1.1.1                        htmlwidgets_1.6.2                  shiny_1.7.4.1                     
+[130] DelayedMatrixStats_1.23.0          zoo_1.8-12                         jsonlite_1.8.7                    
+[133] BiocSingular_1.17.1                RCurl_1.98-1.12                    GenomeInfoDbData_1.2.10           
+[136] patchwork_1.1.2                    Rhdf5lib_1.23.0                    munsell_0.5.0                     
+[139] viridis_0.6.3                      reticulate_1.30                    stringi_1.7.12                    
+[142] zlibbioc_1.47.0                    MASS_7.3-60                        AnnotationHub_3.9.1               
+[145] pkgbuild_1.4.0                     parallel_4.3.0                     listenv_0.9.0                     
+[148] ggrepel_0.9.3                      deldir_1.0-9                       Biostrings_2.69.2                 
+[151] splines_4.3.0                      tensor_1.5                         BSgenome.Hsapiens.UCSC.hg38_1.4.5 
+[154] locfit_1.5-9.8                     ps_1.7.5                           igraph_1.5.0                      
+[157] spatstat.geom_3.2-2                reshape2_1.4.4                     ScaledMatrix_1.9.1                
+[160] pkgload_1.3.2                      XML_3.99-0.14                      BiocVersion_3.18.0                
+[163] evaluate_0.21                      SeuratObject_4.1.3                 BiocManager_1.30.21               
+[166] nloptr_2.0.3                       httpuv_1.6.11                      RANN_2.6.1                        
+[169] tidyr_1.3.0                        purrr_1.0.1                        polyclip_1.10-4                   
+[172] future_1.33.0                      scattermore_1.2                    rsvd_1.0.5                        
+[175] xtable_1.8-4                       monocle3_1.3.1                     restfulr_0.0.15                   
+[178] later_1.3.1                        viridisLite_0.4.2                  tibble_3.2.1                      
+[181] GenomicAlignments_1.37.0           memoise_2.0.1                      beeswarm_0.4.0                    
+[184] AnnotationDbi_1.63.2               cluster_2.1.4                      globals_0.16.2                    
+[187] GSEABase_1.63.0                    here_1.0.1                        
+
+
+------- Log Info
+
+
+2023-07-18 07:19:44.189017 : getMatrixFromProject Input-Parameters, Class = list
+
+getMatrixFromProject Input-Parameters$ArchRProj: length = 1
+
+getMatrixFromProject Input-Parameters$useMatrix: length = 1
+[1] "GeneExpressionMatrix"
+
+
+getMatrixFromProject Input-Parameters$useSeqnames: length = 0
+NULL
+
+
+getMatrixFromProject Input-Parameters$excludeChr: length = 0
+NULL
+
+
+getMatrixFromProject Input-Parameters$verbose: length = 1
+[1] TRUE
+
+
+getMatrixFromProject Input-Parameters$binarize: length = 1
+[1] FALSE
+
+
+getMatrixFromProject Input-Parameters$threads: length = 1
+[1] 14
+
+
+getMatrixFromProject Input-Parameters$logFile: length = 1
+[1] "ArchRLogs/ArchR-getMatrixFromProject-73e3138de727-Date-2023-07-18_Time-07-19-43.835212.log"
+
+
+2023-07-18 07:20:05.530905 : Reading GeneExpressionMatrix : SAM24427130(1 of 4), 0.362 mins elapsed.
+2023-07-18 07:20:05.583973 : Reading GeneExpressionMatrix : SAM24425416(2 of 4), 0.363 mins elapsed.
+2023-07-18 07:20:05.636558 : Reading GeneExpressionMatrix : SAM24418230(3 of 4), 0.363 mins elapsed.
+2023-07-18 07:20:05.688532 : Reading GeneExpressionMatrix : SAM24418231(4 of 4), 0.364 mins elapsed.
+
+2023-07-18 07:20:05.69951 : getMatrixFromArrow Input-Parameters, Class = list
+
+getMatrixFromArrow Input-Parameters$ArrowFile: length = 1
+                                                                                          SAM24427130 
+"/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject/ArrowFiles/SAM24427130.arrow" 
+
+
+getMatrixFromArrow Input-Parameters$useMatrix: length = 1
+[1] "GeneExpressionMatrix"
+
+
+getMatrixFromArrow Input-Parameters$useSeqnames: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$excludeChr: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$cellNames: length = 11032
+[1] "SAM24427130#CGCACACAGCTATGAC-1" "SAM24427130#ACCATAATCATCAGTA-1" "SAM24427130#GGTACAAAGTAAGTCC-1"
+[4] "SAM24427130#GTTAACCAGCACGATT-1" "SAM24427130#GAACCTGTCAAACCTA-1" "SAM24427130#ATGAATGCACTTAGGC-1"
+
+
+getMatrixFromArrow Input-Parameters$ArchRProj: length = 1
+
+getMatrixFromArrow Input-Parameters$verbose: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$binarize: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$logFile: length = 1
+[1] "ArchRLogs/ArchR-getMatrixFromProject-73e3138de727-Date-2023-07-18_Time-07-19-43.835212.log"
+
+
+
+2023-07-18 07:20:05.754836 : getMatrixFromArrow Input-Parameters, Class = list
+
+getMatrixFromArrow Input-Parameters$ArrowFile: length = 1
+                                                                                          SAM24425416 
+"/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject/ArrowFiles/SAM24425416.arrow" 
+
+
+getMatrixFromArrow Input-Parameters$useMatrix: length = 1
+[1] "GeneExpressionMatrix"
+
+
+getMatrixFromArrow Input-Parameters$useSeqnames: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$excludeChr: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$cellNames: length = 6896
+[1] "SAM24425416#TTACAGCAGTAGGCGG-1" "SAM24425416#TCTCAAGCAGAAATGC-1" "SAM24425416#TGATCAGGTAAAGCGG-1"
+[4] "SAM24425416#GGGTTTCCACCCACAG-1" "SAM24425416#GCTAGCGGTACAATGT-1" "SAM24425416#CATGAGGCACCTGCTC-1"
+
+
+getMatrixFromArrow Input-Parameters$ArchRProj: length = 1
+
+getMatrixFromArrow Input-Parameters$verbose: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$binarize: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$logFile: length = 1
+
+2023-07-18 07:20:05.768027 : getMatrixFromArrow Input-Parameters, Class = list
+[1] "ArchRLogs/ArchR-getMatrixFromProject-73e3138de727-Date-2023-07-18_Time-07-19-43.835212.log"
+
+
+
+getMatrixFromArrow Input-Parameters$ArrowFile: length = 1
+                                                                                          SAM24418230 
+"/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject/ArrowFiles/SAM24418230.arrow" 
+
+
+getMatrixFromArrow Input-Parameters$useMatrix: length = 1
+[1] "GeneExpressionMatrix"
+
+
+getMatrixFromArrow Input-Parameters$useSeqnames: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$excludeChr: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$cellNames: length = 5460
+[1] "SAM24418230#TCCACAACACCCACAG-1" "SAM24418230#TACTGCACATAGCAGG-1" "SAM24418230#ATTGAAGCATTAAAGG-1"
+[4] "SAM24418230#CCTGCTCCAGGTATTT-1" "SAM24418230#TCTAATCTCGAGGAGT-1" "SAM24418230#TGATCGAGTGGAAACG-1"
+
+
+getMatrixFromArrow Input-Parameters$ArchRProj: length = 1
+
+getMatrixFromArrow Input-Parameters$verbose: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$binarize: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$logFile: length = 1
+[1] "ArchRLogs/ArchR-getMatrixFromProject-73e3138de727-Date-2023-07-18_Time-07-19-43.835212.log"
+
+
+
+2023-07-18 07:20:05.8179 : getMatrixFromArrow Input-Parameters, Class = list
+
+getMatrixFromArrow Input-Parameters$ArrowFile: length = 1
+                                                                                          SAM24418231 
+"/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject/ArrowFiles/SAM24418231.arrow" 
+
+
+getMatrixFromArrow Input-Parameters$useMatrix: length = 1
+[1] "GeneExpressionMatrix"
+
+
+getMatrixFromArrow Input-Parameters$useSeqnames: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$excludeChr: length = 0
+NULL
+
+
+getMatrixFromArrow Input-Parameters$cellNames: length = 5509
+[1] "SAM24418231#TACATCAAGCAAGGGT-1" "SAM24418231#CCCGTAAAGATAACCC-1" "SAM24418231#GAGGGAGCAATGAGGT-1"
+[4] "SAM24418231#TAGTGAGAGGATCCGC-1" "SAM24418231#GGATGGCCAACTAACT-1" "SAM24418231#GTCTAGCCATAACGGG-1"
+
+
+getMatrixFromArrow Input-Parameters$ArchRProj: length = 1
+
+getMatrixFromArrow Input-Parameters$verbose: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$binarize: length = 1
+[1] FALSE
+
+
+getMatrixFromArrow Input-Parameters$logFile: length = 1
+[1] "ArchRLogs/ArchR-getMatrixFromProject-73e3138de727-Date-2023-07-18_Time-07-19-43.835212.log"
+
+
+
+2023-07-18 07:20:07.829595 : featureDF SAM24425416, Class = DFrame
+DataFrame with 36451 rows and 6 columns
+
+2023-07-18 07:20:07.897846 : featureDF SAM24418230, Class = DFrame
+DataFrame with 36451 rows and 6 columns
+
+2023-07-18 07:20:07.962108 : featureDF SAM24427130, Class = DFrame
+DataFrame with 36451 rows and 6 columns
+        seqnames       idx     start       end        name    strand
+           <Rle> <integer> <integer> <integer> <character> <integer>
+1     KI270727.1         1    101140    101141  AC136352.3         3
+2     KI270727.1         2    167566    167571  AC136352.2         3
+3     KI270727.1         3    372321    372322  AC171558.3         3
+4     KI270727.1         4    386277    386278  AC171558.1         3
+5     KI270728.1         1     17233     17234  AC133551.1         3
+...          ...       ...       ...       ...         ...       ...
+36447       chrX      1142 155612876 155612952       TMLHE         3
+36448       chrX      1143 155767811 155767812       SPRY3         3
+36449       chrX      1144 155881344 155881378       VAMP7         3
+36450       chrX      1145 155997580 155997706        IL9R         3
+36451       chrX      1146 156016836 156016837      WASIR1         3
+
+2023-07-18 07:20:08.027311 : Getting GeneExpressionMatrix from ArrowFile : SAM24418230.arrow, 0.038 mins elapsed.
+
+2023-07-18 07:20:08.050094 : featureDF SAM24418231, Class = DFrame
+DataFrame with 36451 rows and 6 columns
+        seqnames       idx     start       end        name    strand
+           <Rle> <integer> <integer> <integer> <character> <integer>
+1     KI270727.1         1    101140    101141  AC136352.3         3
+2     KI270727.1         2    167566    167571  AC136352.2         3
+3     KI270727.1         3    372321    372322  AC171558.3         3
+4     KI270727.1         4    386277    386278  AC171558.1         3
+5     KI270728.1         1     17233     17234  AC133551.1         3
+...          ...       ...       ...       ...         ...       ...
+36447       chrX      1142 155612876 155612952       TMLHE         3
+36448       chrX      1143 155767811 155767812       SPRY3         3
+36449       chrX      1144 155881344 155881378       VAMP7         3
+36450       chrX      1145 155997580 155997706        IL9R         3
+36451       chrX      1146 156016836 156016837      WASIR1         3
+
+2023-07-18 07:20:08.176157 : Getting GeneExpressionMatrix from ArrowFile : SAM24418231.arrow, 0.039 mins elapsed.
+        seqnames       idx     start       end        name    strand
+           <Rle> <integer> <integer> <integer> <character> <integer>
+1     KI270727.1         1    101140    101141  AC136352.3         3
+2     KI270727.1         2    167566    167571  AC136352.2         3
+3     KI270727.1         3    372321    372322  AC171558.3         3
+4     KI270727.1         4    386277    386278  AC171558.1         3
+5     KI270728.1         1     17233     17234  AC133551.1         3
+...          ...       ...       ...       ...         ...       ...
+36447       chrX      1142 155612876 155612952       TMLHE         3
+36448       chrX      1143 155767811 155767812       SPRY3         3
+36449       chrX      1144 155881344 155881378       VAMP7         3
+36450       chrX      1145 155997580 155997706        IL9R         3
+36451       chrX      1146 156016836 156016837      WASIR1         3
+
+2023-07-18 07:20:08.314163 : Getting GeneExpressionMatrix from ArrowFile : SAM24425416.arrow, 0.043 mins elapsed.
+        seqnames       idx     start       end        name    strand
+           <Rle> <integer> <integer> <integer> <character> <integer>
+1     KI270727.1         1    101140    101141  AC136352.3         3
+2     KI270727.1         2    167566    167571  AC136352.2         3
+3     KI270727.1         3    372321    372322  AC171558.3         3
+4     KI270727.1         4    386277    386278  AC171558.1         3
+5     KI270728.1         1     17233     17234  AC133551.1         3
+...          ...       ...       ...       ...         ...       ...
+36447       chrX      1142 155612876 155612952       TMLHE         3
+36448       chrX      1143 155767811 155767812       SPRY3         3
+36449       chrX      1144 155881344 155881378       VAMP7         3
+36450       chrX      1145 155997580 155997706        IL9R         3
+36451       chrX      1146 156016836 156016837      WASIR1         3
+
+2023-07-18 07:20:08.4355 : Getting GeneExpressionMatrix from ArrowFile : SAM24427130.arrow, 0.046 mins elapsed.
+
+2023-07-18 07:20:21.227269 : mat SAM24418230, Class = dgCMatrix
+mat SAM24418230: nRows = 36451, nCols = 5460
+mat SAM24418230: NonZeroEntries = 8053192, EntryRange = [ 0.381883449171313 , 5499.47423764458 ]
+5 x 5 sparse Matrix of class "dgCMatrix"
+     SAM24418230#TCCACAACACCCACAG-1 SAM24418230#TACTGCACATAGCAGG-1 SAM24418230#ATTGAAGCATTAAAGG-1 SAM24418230#CCTGCTCCAGGTATTT-1
+[1,]                              .                              .                              .                              .
+[2,]                              .                              .                              .                              .
+[3,]                              .                              .                              .                              .
+[4,]                              .                              .                              .                              .
+[5,]                              .                              .                              .                              .
+     SAM24418230#TCTAATCTCGAGGAGT-1
+[1,]                              .
+[2,]                              .
+[3,]                              .
+[4,]                              .
+[5,]                              .
+
+
+2023-07-18 07:20:21.394838 : Organizing SE GeneExpressionMatrix from ArrowFile : SAM24418230.arrow, 0.26 mins elapsed.
+
+2023-07-18 07:20:21.69808 : mat SAM24418231, Class = dgCMatrix
+mat SAM24418231: nRows = 36451, nCols = 5509
+mat SAM24418231: NonZeroEntries = 8336583, EntryRange = [ 0.344234079173838 , 5512.01478743068 ]
+5 x 5 sparse Matrix of class "dgCMatrix"
+     SAM24418231#TACATCAAGCAAGGGT-1 SAM24418231#CCCGTAAAGATAACCC-1 SAM24418231#GAGGGAGCAATGAGGT-1 SAM24418231#TAGTGAGAGGATCCGC-1
+[1,]                              .                              .                              .                              .
+[2,]                              .                              .                              .                              .
+[3,]                              .                              .                              .                              .
+[4,]                              .                              .                              .                              .
+[5,]                              .                              .                              .                              .
+     SAM24418231#GGATGGCCAACTAACT-1
+[1,]                              .
+[2,]                              .
+[3,]                              .
+[4,]                              .
+[5,]                              .
+
+
+2023-07-18 07:20:21.845602 : Organizing SE GeneExpressionMatrix from ArrowFile : SAM24418231.arrow, 0.267 mins elapsed.
+
+2023-07-18 07:20:22.515463 : se SAM24418231, Class = SummarizedExperiment
+class: SummarizedExperiment 
+dim: 36451 5509 
+metadata(0):
+assays(1): GeneExpressionMatrix
+rownames: NULL
+rowData names(6): seqnames idx ... name strand
+colnames(5509): SAM24418231#TACATCAAGCAAGGGT-1 SAM24418231#CCCGTAAAGATAACCC-1 ... SAM24418231#TCACGGATCTCCATGC-1
+  SAM24418231#TGGGCCTAGTAACCAC-1
+colData names(37): BlacklistRatio DoubletEnrichment ... ReadsInPeaks FRIP
+
+2023-07-18 07:20:22.523401 : Completed GeneExpressionMatrix : SAM24418231(4 of 4), 0.645 mins elapsed.
+
+2023-07-18 07:20:23.271334 : se SAM24418230, Class = SummarizedExperiment
+class: SummarizedExperiment 
+dim: 36451 5460 
+metadata(0):
+assays(1): GeneExpressionMatrix
+rownames: NULL
+rowData names(6): seqnames idx ... name strand
+colnames(5460): SAM24418230#TCCACAACACCCACAG-1 SAM24418230#TACTGCACATAGCAGG-1 ... SAM24418230#TGCTCACTCACAGCCA-1
+  SAM24418230#CACTGACCAAGGTATA-1
+colData names(37): BlacklistRatio DoubletEnrichment ... ReadsInPeaks FRIP
+
+2023-07-18 07:20:23.280826 : Completed GeneExpressionMatrix : SAM24418230(3 of 4), 0.657 mins elapsed.
+
+2023-07-18 07:20:29.386351 : mat SAM24425416, Class = dgCMatrix
+mat SAM24425416: nRows = 36451, nCols = 6896
+mat SAM24425416: NonZeroEntries = 14123645, EntryRange = [ 0.253350561171493 , 3320.38254632397 ]
+5 x 5 sparse Matrix of class "dgCMatrix"
+     SAM24425416#TTACAGCAGTAGGCGG-1 SAM24425416#TCTCAAGCAGAAATGC-1 SAM24425416#TGATCAGGTAAAGCGG-1 SAM24425416#GGGTTTCCACCCACAG-1
+[1,]                              .                              .                              .                              .
+[2,]                              .                              .                              .                              .
+[3,]                              .                              .                              .                              .
+[4,]                              .                              .                              .                              .
+[5,]                              .                              .                              .                              .
+     SAM24425416#GCTAGCGGTACAATGT-1
+[1,]                              .
+[2,]                              .
+[3,]                              .
+[4,]                              .
+[5,]                              .
+
+
+2023-07-18 07:20:29.593245 : Organizing SE GeneExpressionMatrix from ArrowFile : SAM24425416.arrow, 0.397 mins elapsed.
+
+2023-07-18 07:20:30.809718 : se SAM24425416, Class = SummarizedExperiment
+class: SummarizedExperiment 
+dim: 36451 6896 
+metadata(0):
+assays(1): GeneExpressionMatrix
+rownames: NULL
+rowData names(6): seqnames idx ... name strand
+colnames(6896): SAM24425416#TTACAGCAGTAGGCGG-1 SAM24425416#TCTCAAGCAGAAATGC-1 ... SAM24425416#ACTTAGTCATACCCGG-1
+  SAM24425416#CCAGCTGCAACAGGTG-1
+colData names(37): BlacklistRatio DoubletEnrichment ... ReadsInPeaks FRIP
+
+2023-07-18 07:20:30.818168 : Completed GeneExpressionMatrix : SAM24425416(2 of 4), 0.783 mins elapsed.
+
+2023-07-18 07:20:41.795496 : mat SAM24427130, Class = dgCMatrix
+mat SAM24427130: nRows = 36451, nCols = 11032
+mat SAM24427130: NonZeroEntries = 29889764, EntryRange = [ 0.462705904127337 , 1418.5303514377 ]
+5 x 5 sparse Matrix of class "dgCMatrix"
+     SAM24427130#CGCACACAGCTATGAC-1 SAM24427130#ACCATAATCATCAGTA-1 SAM24427130#GGTACAAAGTAAGTCC-1 SAM24427130#GTTAACCAGCACGATT-1
+[1,]                              .                              .                              .                              .
+[2,]                              .                              .                              .                              .
+[3,]                              .                              .                              .                              .
+[4,]                              .                              .                              .                              .
+[5,]                              .                              .                              .                              .
+     SAM24427130#GAACCTGTCAAACCTA-1
+[1,]                              .
+[2,]                              .
+[3,]                              .
+[4,]                              .
+[5,]                              .
+
+
+2023-07-18 07:20:43.82533 : Organizing SE GeneExpressionMatrix from ArrowFile : SAM24427130.arrow, 0.635 mins elapsed.
+
+2023-07-18 07:20:45.780892 : se SAM24427130, Class = SummarizedExperiment
+class: SummarizedExperiment 
+dim: 36451 11032 
+metadata(0):
+assays(1): GeneExpressionMatrix
+rownames: NULL
+rowData names(6): seqnames idx ... name strand
+colnames(11032): SAM24427130#CGCACACAGCTATGAC-1 SAM24427130#ACCATAATCATCAGTA-1 ... SAM24427130#AATTAGGCATCGCTTT-1
+  SAM24427130#AGCTATATCTCAATAG-1
+colData names(37): BlacklistRatio DoubletEnrichment ... ReadsInPeaks FRIP
+
+2023-07-18 07:20:45.794043 : Completed GeneExpressionMatrix : SAM24427130(1 of 4), 1.033 mins elapsed.
+2023-07-18 07:20:50.761573 : Organizing colData, 1.115 mins elapsed.
+2023-07-18 07:20:51.060036 : Organizing rowData, 1.12 mins elapsed.
+2023-07-18 07:20:51.063908 : Organizing rowRanges, 1.121 mins elapsed.
+2023-07-18 07:20:51.073892 : Organizing Assays (1 of 1), 1.121 mins elapsed.
+2023-07-18 07:20:58.291692 : Constructing SummarizedExperiment, 1.241 mins elapsed.
+2023-07-18 07:20:59.988877 : Finished Matrix Creation, 1.269 mins elapsed.

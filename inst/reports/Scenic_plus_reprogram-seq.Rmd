@@ -13,7 +13,7 @@ for (i in seq_along(sample_names)){
 }
 adata <- get_annotated_data(barcode_tab, 
                             paths_to_data_files = params$data_file_paths,
-                            sample_names = "reprogram-seq",
+                            sample_names = barcode_tab$sample_id[1],
                             python_library = "scenicplus")
 
 path_to_peak_matrix <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
@@ -24,7 +24,7 @@ reticulate::use_condaenv(condaenv = params$virtual_env, conda = params$conda_exe
 
 reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
 
-cistopic_obj <- find_topics(adata, sample_names = "reprogram_seq", params$data_file_paths, params$work_dir,
+cistopic_obj <- find_topics(adata, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir,
                             params$temp_dir)
 
 reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))

@@ -6,5 +6,3 @@ venv <- BasiliskEnvironment(envname="cellOracle",
                                                       "bioconda"),
                             pip=c("velocyto==0.17.17", "celloracle==0.12.1")
 )
-
-

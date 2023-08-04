@@ -15,23 +15,23 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir):
     fragments_dict = dict(zip(sample_names, paths_to_fragments))
     cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = '/gstore/scratch/u/wlodarct/temp/scenic/peak_matrix.tsv',
                                                       path_to_fragments=fragments_dict[key],
-                                                      project = key) for key in fragments_dict.keys()]]
-        cistopic_obj = merge(cistopic_obj_list)
-        cistopic_obj.add_cell_data(cell_data)
-        models=run_cgs_models(cistopic_obj,
-                    n_topics=[2,4,8,15,20,25,32,38,48],
-                    n_cpu=8,
-                    n_iter=500,
-                    random_state=555,
-                    alpha=50,
-                    alpha_by_topic=True,
-                    eta=0.1,
-                    eta_by_topic=False,
-                    save_path=None,
-                    _temp_dir = '/gstore/scratch/u/wlodarct/temp/scenic/')
+                                                      project = key) for key in fragments_dict.keys()]
+    cistopic_obj = merge(cistopic_obj_list)
+    cistopic_obj.add_cell_data(cell_data)
+    models=run_cgs_models(cistopic_obj,
+                n_topics=[2,4,8,15,20,25,32,38,48],
+                n_cpu=8,
+                n_iter=500,
+                random_state=555,
+                alpha=50,
+                alpha_by_topic=True,
+                eta=0.1,
+                eta_by_topic=False,
+                save_path=None,
+                _temp_dir = '/gstore/scratch/u/wlodarct/temp/scenic/')
                     
     model = evaluate_models(models,
-                       select_model=20,
+                       select_model=25,
                        return_model=True,
                        metrics=['Arun_2010','Cao_Juan_2009', 'Minmo_2011', 'loglikelihood'],
                        plot_metrics=False)
@@ -60,9 +60,9 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir):
         regions = markers_dict[DAR].index[markers_dict[DAR].index.str.startswith('chr')] #only keep regions on known chromosomes
         region_sets['DARs'][DAR] = pr.PyRanges(region_names_to_coordinates(regions))
     # use databased downloaded from https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/
-    rankings_db = '/gstore/scratch/u/wlodarct/temp/regions_vs_motifs.rankings.feather'
-    scores_db = '/gstore/scratch/u/wlodarct/temp/hg38_screen_v10_clust.regions_vs_motifs.scores.feather'
-    motif_annotation = '/gstore/scratch/u/wlodarct/temp/' #motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl
+    rankings_db = '/gstore/scratch/u/wlodarct/GREDXFER-4710/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather'
+    scores_db = '/gstore/scratch/u/wlodarct/GREDXFER-4710/hg38_screen_v10_clust.regions_vs_motifs.scores.feather'
+    motif_annotation = '/gstore/scratch/u/wlodarct/GREDXFER-4710/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl' #motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl
     if not os.path.exists(os.path.join(work_dir, 'motifs')):
         os.makedirs(os.path.join(work_dir, 'motifs'))
     run_pycistarget(
