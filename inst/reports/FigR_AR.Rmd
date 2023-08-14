@@ -1,0 +1,81 @@
+```{r cache = TRUE}
+library(FigR)
+library(dplyr)
+library(FNN)
+library(doParallel)
+library(ArchR)
+library(BSgenome.Hsapiens.UCSC.hg38)
+
+ArchR_proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr")
+peakMatrix.sce <- getMatrixFromProject(ArchRProj = ArchR_proj, useMatrix = "PeakMatrix")
+# runGenePeakcorr requires assay to be Matrix or SummarizedExperiment
+assays(peakMatrix.sce)[[1]] <- Matrix::Matrix(as.matrix(assay(peakMatrix.sce), dimnames = dimnames(assay(peakMatrix.sce)), ncol = ncol(assay(peakMatrix.sce))))
+geneExprMatrix.sce <- getMatrixFromProject(ArchRProj = ArchR_proj, useMatrix = "GeneExpressionMatrix")
+geneExprMatrix <- as.matrix(assay(geneExprMatrix.sce))
+rownames(geneExprMatrix) <- rowData(geneExprMatrix.sce)$name
+
+# Remove genes with zero expression across all cells
+geneExprMatrix <- geneExprMatrix[Matrix::rowSums(geneExprMatrix)!=0,]
+
+# choose sequences present in the reference genome
+selected_sequences <- seqnames(rowRanges(peakMatrix.sce)) %in% names(BSgenome.Hsapiens.UCSC.hg38)
+peakMatrix.sce <- peakMatrix.sce[selected_sequences,]
+
+# extract LSI
+LSI_ATAC <- getReducedDims(ArchR_proj, reducedDims = "IterativeLSI_ATAC")
+
+# Cell kNN for later use in results smoothing
+cellkNN <- get.knn(LSI_ATAC , k = 30)$nn.index
+
+rownames(cellkNN) <- rownames(LSI_ATAC)
+
+# use cells with both peak and gene expression data
+geneExprMatrix <- geneExprMatrix[,colnames(geneExprMatrix) %in% colnames(peakMatrix.sce)]
+
+# Calculate peak to gene correlation
+# default window around each gene: 50000
+names(assays(peakMatrix.sce)) <- "counts"
+cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.sce,
+                           RNAmat = geneExprMatrix,
+                           genome = "hg38",
+                           nCores = params$n_cpu,
+                           p.cut = NULL,
+                           n_bg = 100,
+                           windowPadSize = 5e5)
+
+
+# filter siginificant peak-gene associations
+
+cisCorr.filt <- cisCorr %>% filter(pvalZ <= 0.05)
+
+dorcGenes <- dorcJPlot(dorcTab = cisCorr.filt,
+                       cutoff =10,
+                       labelTop = 20,
+                       returnGeneList = TRUE,
+                       force = 2)
+
+numDorcs <- cisCorr.filt %>% group_by(Gene) %>% tally() %>%
+    arrange(desc(n))
+
+
+# calculate domain of regulatory chromatin (DORC) accessibility scores for each gene
+dorcMat <- getDORCScores(ATAC.se = peakMatrix.sce,
+                           dorcTab = cisCorr.filt,
+                           geneList = dorcGenes,
+                           nCores = params$n_cpu)
+
+
+# smooth dorc socres using cell KNN
+dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = 8)
+
+# smooth gene expression data
+RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = RNAmat, nCores = 8)
+
+FigR.GRN <- runFigRGRN(ATAC.se = peakMatrix.sce,
+                       dorcTab = cisCorr.filt,
+                       genome = "hg38",
+                       dorcMat = dorcMat.s,
+                       rnaMat = RNAmat.s,
+                       nCores = params$n_cpu)
+
+```

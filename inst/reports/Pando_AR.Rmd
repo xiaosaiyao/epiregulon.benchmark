@@ -1,0 +1,159 @@
+```{r cache = TRUE}
+# use matrix retrieved from ArchR project
+# use gene annotations dataset the same as in ArchR and manually extract protein coding genes
+
+library(Signac)
+library(Seurat)
+library(zellkonverter)
+library(BSgenome.Hsapiens.UCSC.hg38)
+library(ArchR)
+library(Pando)
+library(foreach)
+#library(biomaRt)
+
+# download annotations using bimaRt package and prepare GRanges object
+#annotationsDB <- useEnsembl(biomart = "genes", dataset = "hsapiens_gene_ensembl")
+
+# attributes=c('chromosome_name', 'strand',
+#              'external_gene_name', 'transcript_biotype', 'end_position',
+#              'start_position')
+# annotations <- getBM(attributes = attributes, mart = annotationsDB, filters = "transcript_biotype",
+#                      values ="protein_coding")
+# annotations <- GRanges(seqnames = Rle(annotations$chromosome_name),
+#                        ranges = IRanges(annotations$start_position, annotations$end_position),
+#                        strand = Rle(annotations$strand), mcols = DataFrame(gene_name = annotations$external_gene_name))
+
+# load annotation data copied from the ArchR package
+load("/gstore/project/lineage/tomek/method-benchmark/data/geneAnnoHg38.rda")
+
+# add biotype column required by Signac
+annotations <- geneAnnoHg38$genes
+
+# choose only those genes for which TSS has been determined
+overlaps <- GenomicRanges::findOverlaps(geneAnnoHg38$genes, geneAnnoHg38$TSS)
+annotations <- annotations[unique(overlaps@from),]
+
+# only genes with biotype = "protein coding" will be selected for downstream analyses
+mcols(annotations)$gene_biotype <- "protein_coding" # other possible types are
+# "lincRNA", "rRNA", "processed_transcript"
+mcols(annotations)$gene_name <- mcols(annotations)$symbol
+
+counts_1 <- Read10X_h5("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/filtered_feature_bc_matrix.h5")
+counts_2 <- Read10X_h5("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/filtered_feature_bc_matrix.h5")
+
+NGS4557_data_1 <- CreateSeuratObject(counts = counts_1$`Gene Expression`, assay ="RNA")
+NGS4557_data_2 <- CreateSeuratObject(counts = counts_2$`Gene Expression`, assay ="RNA")
+
+NGS4557_data_1[["ATAC"]] <- CreateChromatinAssay(counts = counts_1$Peaks, sep = c(":", "-"),
+    fragments = "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/atac_fragments.tsv.gz",
+    annotation = annotations)
+
+NGS4557_data_2[["ATAC"]] <- CreateChromatinAssay(counts = counts_2$Peaks, sep = c(":", "-"),
+    fragments = "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/atac_fragments.tsv.gz",
+    annotation = annotations)
+
+NGS4557_data_1 <- RenameCells(NGS4557_data_1, new.names =paste0("SAM24418231#",colnames(NGS4557_data_1)))
+NGS4557_data_2 <- RenameCells(NGS4557_data_2, new.names =paste0("SAM24418230#",colnames(NGS4557_data_2)))
+
+Seurat_obj <- merge(NGS4557_data_1, NGS4557_data_2)
+
+
+################
+# HTO
+################
+archR_project_path = "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/"
+proj <- loadArchRProject(path = archR_project_path, showLogo = FALSE)
+geneExprMatrix = getMatrixFromProject(
+    ArchRProj = proj,
+    useMatrix = "GeneExpressionMatrix"
+)
+Seurat_obj <- subset(Seurat_obj, cells = colnames(geneExprMatrix))
+geneExprMatrix <- geneExprMatrix[,colnames(Seurat_obj)]
+Seurat_obj <- AddMetaData(Seurat_obj, metadata = geneExprMatrix$hash_assignment,
+                                  col.name = "hash_assignment")
+
+################
+# peak counts
+################
+peakMatrix.sce <- getMatrixFromProject(ArchRProj = proj, useMatrix = "PeakMatrix")
+peakCounts <- assay(peakMatrix.sce)
+peakRanges <- rowRanges(peakMatrix.sce)
+peakRanges <- paste(seqnames(peakRanges), ranges(peakRanges) ,sep = "-")
+rownames(peakCounts) <- peakRanges
+peakCounts <- as(peakCounts, "dgCMatrix")
+
+fragments_1 <- CreateFragmentObject(
+    path = "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/atac_fragments.tsv.gz",
+    cells = colnames(NGS4557_data_1),
+    validate.fragments = FALSE
+)
+
+fragments_2 <- CreateFragmentObject(
+    path = "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/atac_fragments.tsv.gz",
+    cells = colnames(NGS4557_data_2),
+    validate.fragments = FALSE
+)
+
+
+Seurat_obj[["peaks"]] <- CreateChromatinAssay(counts = peakCounts,
+                                                      fragments = list(fragments_1, fragments_2),
+                                                      annotation = annotations)
+
+##########
+# DATA NORMALIZATION
+##########
+
+DefaultAssay(Seurat_obj) <- "RNA"
+# data normalization
+Seurat_obj <- SCTransform(Seurat_obj)
+
+DefaultAssay(Seurat_obj) <- "peaks"
+
+Seurat_obj <- RunTFIDF(Seurat_obj)
+
+Seurat_obj <- FindTopFeatures(Seurat_obj, min.cutoff = "q0") # use all features
+# complete LSI by performing single value decomposition
+Seurat_obj <- RunSVD(Seurat_obj)
+
+#####################
+# SEQUENCES FILTERING
+#####################
+# remove peaks corresponding to the sequences which are not present in the reference genome
+missing_sequences <- setdiff(as.character(levels(Seurat_obj@assays$peaks@ranges@seqnames@values)),
+                             names(BSgenome.Hsapiens.UCSC.hg38))
+
+peaks_assay <- GetAssay(Seurat_obj, assay = "peaks")
+Seurat_obj@assays$peaks <- subset(peaks_assay, features = rownames(peaks_assay)[!as.character(seqnames(Seurat_obj@assays$peaks@ranges)) %in% missing_sequences])
+
+
+##########
+# Pando workflow
+##########
+
+Seurat_obj <- as(Seurat_obj, "SeuratPlus")
+
+# Select variable features (restrict genes to those which are highly variable)
+Seurat_obj <- Seurat::FindVariableFeatures(Seurat_obj, assay='SCT')
+
+DefaultAssay(Seurat_obj) <- "SCT"
+
+# Get motif data
+data(motifs)
+
+# Initiate GRN object and select candidate regions
+Seurat_obj <- initiate_grn(Seurat_obj,
+                                   rna_assay = "SCT",
+                             exclude_exons = FALSE)
+
+# Scan candidate regions for TF binding motifs
+Seurat_obj <- find_motifs(
+    Seurat_obj,
+    pfm = motifs,
+    genome = BSgenome.Hsapiens.UCSC.hg38
+)
+
+# Infer gene regulatory network (only variable features are taken)
+Seurat_obj <- infer_grn(Seurat_obj,
+                                parallel = TRUE)
+
+```

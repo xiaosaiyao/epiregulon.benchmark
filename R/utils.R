@@ -14,10 +14,11 @@ calculate_AUC <- function(x,y){
 calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_elements_ind, n_steps = 1e3){
     values <- as.vector(values)
     values <- values[unique(c(positive_elements_ind, negative_elements_ind))]
-    positive_elements_ind <- which(positive_elements_ind %in% unique(c(positive_elements_ind, negative_elements_ind)))
-    max_val <- max(values) +1 #add to account for ">=" used for threshold
+    positive_elements_ind <- which(unique(c(positive_elements_ind, negative_elements_ind)) %in% positive_elements_ind)
+    max_val <- max(values)
     min_val <- min(values)
-    steps <- seq(min_val, max_val, length.out = 1e3)
+    max_val <- max_val+(max_val-min_val)/n_steps #add to account for ">=" used for threshold
+    steps <- seq(min_val, max_val, length.out = n_steps)
     is_positive <- rep(FALSE, length(values))
     is_positive[positive_elements_ind] <- TRUE
     res_list <- list()
@@ -25,7 +26,7 @@ calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_e
     for(i in seq_along(steps)){
         threshold_reached <- values >= steps[i]
         confusion_matrix <- data.frame(threshold_reached =threshold_reached, category = is_positive)
-        confusion_matrix <- rbind(confusion_matrix, all_combinations)
+        confusion_matrix <- rbind(all_combinations, confusion_matrix)
         tab <- table(confusion_matrix)
         # account for adding one observation for combination
         tab <- tab - 1
@@ -33,8 +34,8 @@ calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_e
                            FN = tab[1, 2], cutoff = steps[i])
     }
     res <- as.data.frame(do.call(rbind, res_list))
-    TPR <- rev(res$TP/(res$TP + res$FN))
-    FPR <- rev(res$FP/(res$FP + res$TN))
+    TPR <- res$TP/(res$TP + res$FN)
+    FPR <- res$FP/(res$FP + res$TN)
     list(TPR = TPR, FPR = FPR, cutoff = res$cutoff, confusion_matrix_data = res)
 }
 
@@ -84,7 +85,7 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
         selected_row <- group_combinations[i,]
         current_combination <- as.list(selected_row)
         cell_line_ind <- grep(current_combination$cell_line, geneExprMatrix.sce$hash_assignment)
-        activity_values <- activity.matrix[current_combination$transcription_factor,]
+        activity_values <- activity.matrix[as.character(current_combination$transcription_factor),]
         experimental_treatment_ind <- grep(current_combination$experimental_treatment, geneExprMatrix.sce$hash_assignment)
         control_treatment_ind <- grep(current_combination$control_treatment, geneExprMatrix.sce$hash_assignment)
         if (current_combination$effect_direction == "up"){
@@ -121,6 +122,10 @@ get_activity_matrix <- function(method = NULL,
         # adjust gene names to FigR
         GRN <- GRN[,c("Motif", "DORC", "Score")]
         colnames(GRN) <- c("tf", "target", "weight")
+        if(length(intersect(tfs, GRN$tf))==0) {
+            warning("Tfs not found in the FigR output.")
+            return(NULL)
+        }
         return(calculateActivity(expMatrix = geneExprMatrix.sce,
                                                          regulon = GRN))
     }
@@ -137,6 +142,10 @@ get_activity_matrix <- function(method = NULL,
         TFmodules <- NetworkModules(test_srt)
         DefaultAssay(Seurat_obj) <- "RNA"
         tfs <- tfs[tfs %in% names(TFmodules@features$genes_pos)]
+        if(length(tfs)==0) {
+            warning("Tfs not found in the Pando output.")
+            return(NULL)
+        }
         activity.matrix <- matrix(nrow = length(tfs), ncol = dim(Seurat_obj)[2])
         for(i in seq_along(tfs)){
             tf <- tfs[i]
@@ -157,6 +166,10 @@ get_activity_matrix <- function(method = NULL,
         regulon <- GRN[,c("target","source", "coef_mean", "cluster")]
         colnames(regulon) <- c("target", "tf", "weight", "cluster")
         tfs <- tfs[tfs %in% regulon$tf]
+        if(length(tfs)==0) {
+            warning("Tfs not found in the cellOracle output.")
+            return(NULL)
+        }
         regulon <- regulon[regulon$tf %in% tfs,]
         regulon <- split(regulon, regulon$cluster)
         unique_clusters <- as.character(unique(clusters))
@@ -193,7 +206,7 @@ get_activity_matrix <- function(method = NULL,
 getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
                                   labels,
                                   positive_elements_label,
-                                  negative_elemetns_label, ...){
+                                  negative_elements_label, ...){
     if(length(positive_elements_label) > 1)
         positive_elements_label <- paste(positive_elements_label, collapse = "|", sep ="")
     if(length(negative_elements_label) > 1)
@@ -206,7 +219,7 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
     if(add_plot)
         lines(res$FPR~res$TPR, ...)
     else
-    plot(res$FPR~res$TPR, type ="l", xlab = "False postive rate",
+    plot(res$TPR~res$FPR, type ="l", xlab = "False postive rate",
          ylab = "True positive rate", ...)
     return(calculate_AUC(res$FPR, res$TPR))
 }

@@ -8,6 +8,16 @@ will be disregarded.
 - `treatments` Named list with names being transcription factors included in the `hasg_assignment` column in
 the `GeneExpressionMatrix`. List elements are the vectors with groups which should be used as a control.
 
+```
+render_report_reprogram_seq(data_file_paths = "/gne/data/lab-shares/xie-lab/Sequencing_Data/2022/mapping/20220124_ReprogramSeq_Multiome/JT65_67/outs/",
+                            work_dir = "/gstore/scratch/u/wlodarct",
+                            temp_folder = "/gstore/scratch/u/wlodarct/",
+                            conda_exe = "/gstore/home/wlodarct/anaconda3/bin/conda",
+                            virtual_env = "/gstore/home/wlodarct/anaconda3/envs/scenic_plus",
+                            n_cpu = 6,
+                            output_file = file.path(getwd(), "Reprogram-seq_report_2.html"))
+```
+
 
 ## Benchmarking against other tools
 The package uses `basilisk` to set up virtual environments to run the `python` code for the `cellOracle` worfklow.
@@ -20,6 +30,7 @@ git clone https://github.com/aertslab/scenicplus
 cd scenicplus
 pip install -e .
 conda install -c anaconda requests
+conda install -c numba numba
 ```
 
 ## To do:

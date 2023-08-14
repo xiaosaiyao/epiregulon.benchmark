@@ -4,7 +4,8 @@ peakMatrix <- mae[["PeakMatrix"]]
 barcode_tab <- data.frame(barcode = colnames(peakMatrix))
 barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
 barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
-barcode_tab$hash_assignment <- colData(peakMatrix)$hash_assignment 
+barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
+barcode_tab$hash_assignment <- as.character(colData(peakMatrix)$hash_assignment)
 sample_names <- unique(colData(peakMatrix)$Sample)
 paths_to_matrices <- character(0)
 for (i in seq_along(sample_names)){

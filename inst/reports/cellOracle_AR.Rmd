@@ -1,17 +1,17 @@
 ```{r cache = TRUE, cache.lazy = FALSE}
-Sys.setenv("BASILISK_USE_SYSTEM_DIR" = 1)
 library(monocle3)
 library(cicero)
 library(BSgenome.Hsapiens.UCSC.hg38)
-mae <- scMultiome::reprogramSeq()
-peakMatrix <- mae[["PeakMatrix"]]
+library(ArchR)
+proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/") 
+peakMatrix <- getMatrixFromProject(proj, useMatrix = "PeakMatrix")
 peak_positions <- rowRanges(peakMatrix)
 peakinfo <- data.frame(chr = as.character(seqnames(peak_positions)),
                        bp1 = as.numeric(start(peak_positions)),
                        bp2 = as.numeric(end(peak_positions)))
 peakinfo$site_name <- paste(peakinfo$chr, peakinfo$bp1, peakinfo$bp2, sep="_")
 row.names(peakinfo) <- peakinfo$site_name
-cellinfo = data.frame(cells = gsub("reprogram#","",colnames(peakMatrix)))
+cellinfo = data.frame(cells = colnames(peakMatrix))
 rownames(cellinfo) <- cellinfo$cells
 indata <- assay(peakMatrix)
 rownames(indata) <- rownames(peakinfo)
@@ -76,30 +76,30 @@ all_peaks <- unlist(all_peaks)
 all_peaks <- data.frame(x = all_peaks)
 ```
 
-```{r cache = TRUE, cache.lazy = FALSE}
-
-#use_condaenv(params$conda_envir)
-#source_python(system.file("base_GRN.py", package = "epiregulon.benchmark"))
-#base_GRN <- prepare_base_GRN(all_peaks, conns)
-#use_condaenv(condaenv = "/gstore/home/wlodarct/miniforge3/envs/test")
-```
-
 ```{r base_GRN, cache = TRUE, cache.lazy = FALSE}
 library(basilisk)
 library(reticulate)
+GeneExpressionMatrix = getMatrixFromProject(
+    ArchRProj = proj,
+    useMatrix = "GeneExpressionMatrix"
+)
 # use lower association_cutoff than value used in the cellOracle tutorial
 # otherwise only GATA6 and NKX2-1 will not be recovered
-base_GRN <- get_base_GRN(conns, all_peaks, association_cutoff = 0.5)
-barcode_tab <- data.frame(barcode = colnames(mae[["GeneExpressionMatrix"]]))
+base_GRN <- get_base_GRN(conns, all_peaks)
+barcode_tab <- data.frame(barcode = colnames(GeneExpressionMatrix))
 barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
 barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
 barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
-barcode_tab$hash_assignment <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment 
+barcode_tab$hash_assignment <- GeneExpressionMatrix$hash_assignment 
 ```
 ```{r adata, cache = TRUE, cache.lazy = FALSE}
+sample_names <- unique(barcode_tab$sample_id)
+# adjust sample names order to data paths
+new_order <- vapply(sample_names, function(x,y) grep(x,y), params$data_file_paths, FUN.VALUE = numeric(1))
+sample_names <- sample_names[new_order]
 adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
-                            sample_names = unique(barcode_tab$sample_id),
+                            sample_names = sample_names,
                             python_library = "cellOracle")
 links <- calculate_GRN(adata, base_GRN)
 louvain_clusters <- adata$obs$louvain

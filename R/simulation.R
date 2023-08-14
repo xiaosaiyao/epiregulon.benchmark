@@ -24,15 +24,15 @@ normalize_counts <- function(count_matrix){
 #' @export
 processSimResults <- function(sim_res, seed=23143){
     regulon <- build_regulon(sim_res)
-    dimnames(sim_res$counts_obs@counts) <- dimnames(sim_res$counts)
+    dimnames(sim_res$counts_obs$counts) <- dimnames(sim_res$counts)
     peakMatrix <- SingleCellExperiment(list(peak = sim_res$atac_counts, peak_obs = sim_res$atacseq_obs),
                                        colData = DataFrame(label=sim_res$cell_meta$pop),
                                        rowData=DataFrame(idxATAC=seq_len(nrow(sim_res$atacseq_data))))
     norm_counts <- normalize_counts(sim_res$counts)
     logcounts <- log2(norm_counts+1)
-    norm_counts_obs <- normalize_counts(sim_res$counts_obs@counts)
+    norm_counts_obs <- normalize_counts(sim_res$counts_obs$counts)
     logcounts_obs <- log2(norm_counts_obs+1)
-    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs@counts,
+    geneExpMatrix <- SingleCellExperiment(list(counts = sim_res$counts, counts_obs = sim_res$counts_obs$counts,
                                                logcounts = logcounts, logcounts_obs = logcounts_obs,
                                                norm_counts = norm_counts, norm_counts_obs = norm_counts_obs),
                                           colData = DataFrame(label=sim_res$cell_meta$pop),
@@ -109,7 +109,7 @@ assessActivityAccuracy <- function(activities_obs, transcription_difference_matr
     if(is.null(activities_obs)) return(NULL)
     correlations <- c()
     for(tf in rownames(activities_obs)){
-        correlations <- c(correlations, corr(activities_obs[tf,], transcription_difference_matrix[tf,], method = "spearman"))
+        correlations <- c(correlations, cor(activities_obs[tf,], transcription_difference_matrix[tf,]))
     }
     names(correlations) <- rownames(activities_obs)
     correlations
@@ -168,21 +168,31 @@ addFalseConnections <- function(regulon, fraction_false = 0.5, seed = 10010){
     rbind(regulon, false_connections)
 }
 
+
 #' @export
 getActivity <- function(regulon, geneExpMatrix, peakMatrix,
                         weightMethods =  c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
                         clusters_list = list(), ...){
     res_list <- list()
+    exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
     for(method in weightMethods){
         clusters <- clusters_list[[method]]
-        regulon.w <- addWeights(regulon,
-                                peakMatrix = peakMatrix,
-                                expMatrix = geneExpMatrix,
-                                method = method,
-                                clusters = clusters,
-                                ...)
+        if(method == "logFC"){
+            args <- list(regulon = regulon, method = "logFC", clusters = clusters,
+                         peakMatrix = peakMatrix, expMatrix = geneExpMatrix,
+                         exp_assay = paste0("log", exp_assay))
+            args <- c(args, list(...)[names(list(...)) %in% c("peak_assay","aggregateCells","exp_cutoff","peak_cutoff")])
+            regulon.w <- do.call(addWeights, args)
+        }
+        else{
+            regulon.w <- addWeights(regulon,
+                                    peakMatrix = peakMatrix,
+                                    expMatrix = geneExpMatrix,
+                                    method = method,
+                                    clusters = clusters,
+                                    ...)
+        }
         if(is.null(regulon.w)) next
-        exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
         score.combine <- calculateActivity(regulon = regulon.w,
                                            mode = "weight",
                                            method = "weightedMean",
