@@ -15,6 +15,7 @@ def get_annotated_data(barcode_tab, data_paths = [""], sample_names = None,
             raise Exception("All barcodes should be present in the gene expression data")
         adata_list[i] = adata_list[i][sample_barcodes,]
         adata_list[i].obs["HTO"] = barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["hash_assignment"].values
+        adata_list[i].obs_names = list(map(lambda x: x[0]+"___"+x[1], zip(adata_list[i].obs_names, adata_list[i].obs['sample_id'])))
         adata_list[i].var_names_make_unique()
     adatas = dict(zip(sample_names, adata_list))
     adata = ad.concat(adatas, label = "dataset")

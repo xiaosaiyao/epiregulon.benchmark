@@ -8,13 +8,13 @@ from pycisTopic.topic_binarization import *
 from pycisTopic.diff_features import *
 from scenicplus.wrappers.run_pycistarget import run_pycistarget
 
-def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir):
+def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path_to_peak_matrix):
     scRNA_bc = adata.obs_names
     cell_data = adata.obs
     cell_data['HTO'] = cell_data['HTO'].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
-    cell_data.index = list(map(lambda x: x[0]+"___"+x[1], zip(cell_data.index, cell_data['sample_id'])))
+    #cell_data.index = list(map(lambda x: x[0]+"___"+x[1], zip(cell_data.index, cell_data['sample_id'])))
     fragments_dict = dict(zip(sample_names, paths_to_fragments))
-    cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = '/gstore/scratch/u/wlodarct/temp/scenic/peak_matrix.tsv',
+    cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = path_to_peak_matrix,
                                                       path_to_fragments=fragments_dict[key],
                                                       project = key) for key in fragments_dict.keys()]
     cistopic_obj = merge(cistopic_obj_list)

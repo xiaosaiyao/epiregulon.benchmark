@@ -11,6 +11,7 @@ import pybiomart as pbm
 from scenicplus.scenicplus_class import create_SCENICPLUS_object
 from scenicplus.wrappers.run_scenicplus import run_scenicplus
 from scenicplus.preprocessing.filtering import apply_std_filtering_to_eRegulons
+from scenicplus.eregulon_enrichment import score_eRegulons
 
 ensembl_version_dict = {'109': 'http://www.ensembl.org',
                                 '108': 'http://oct2022.archive.ensembl.org/',
@@ -98,7 +99,8 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
             downstream = [1000, 150000],
             calculate_TF_eGRN_correlation = True,
             calculate_DEGs_DARs = True,    
-            export_to_loom_file = False,   #non-default
+            save_partial = True, #non-default
+            export_to_loom_file = True,   
             export_to_UCSC_file = False,   #non-default
             n_cpu = n_cpu,
             _temp_dir = os.path.join(tmp_dir, 'ray_spill'))
@@ -111,7 +113,32 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
   # (given that the confidence of direct motif annotations is in genral higher). 
   # Discard eRegulons for which the region-to-gene correlation is negative (these are often noisy). 
   # Rename the eRegulons so that eRegulons with the suffix TF_+_+ become TF_+ and those with TF_-_+ become TF_-.
+    scplus_obj = dill.load(open(os.path.join(work_dir, 'scenicplus', 'scplus_obj.pkl'), 'rb'))
     apply_std_filtering_to_eRegulons(scplus_obj)
 
+    region_ranking = dill.load(open(os.path.join(work_dir, 'scenicplus/region_ranking.pkl'), 'rb')) #load ranking calculated using the wrapper function
+    gene_ranking = dill.load(open(os.path.join(work_dir, 'scenicplus/gene_ranking.pkl'), 'rb')) #load ranking calculated using the wrapper function
+    score_eRegulons(scplus_obj,
+                    ranking = region_ranking,
+                    eRegulon_signatures_key = 'eRegulon_signatures_filtered',
+                    key_added = 'eRegulon_AUC_filtered',
+                    enrichment_type= 'region',
+                    auc_threshold = 0.05,
+                    normalize = False,
+                    n_cpu = n_cpu)
+    score_eRegulons(scplus_obj,
+                    gene_ranking,
+                    eRegulon_signatures_key = 'eRegulon_signatures_filtered',
+                    key_added = 'eRegulon_AUC_filtered',
+                    enrichment_type = 'gene',
+                    auc_threshold = 0.05,
+                    normalize= False,
+                    n_cpu = n_cpu)
+    #scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("+","act")
+    #scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("-","supp")
+    #scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("+","act")
+    #scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("-","supp")
+    return list(scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'], 
+    scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'])
 
-    
+

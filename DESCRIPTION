@@ -35,7 +35,9 @@ Suggests:
     FigR,
     scMultiSim,
     cicero,
-    monocle3
+    monocle3,
+    tibble,
+    ensembldb
 Remotes:
     buenrostrolab/FigR,
     ZhangLabGT/scMultiSim,

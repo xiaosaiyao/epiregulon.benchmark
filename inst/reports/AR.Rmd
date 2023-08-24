@@ -37,8 +37,8 @@ presented in the form of curves showing the relation between false and true posi
 
 ```{r cache = TRUE, cache.lazy = FALSE}
 library(epiregulon.benchmark)
-group_combinations_1 <- expand.grid(c("VCaP", "LNCaP"), c("ARV-110", "Enza"), "DMSO", "down", "AR")
-group_combinations_2 <- expand.grid(c("VCaP", "LNCaP"), c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
+group_combinations_1 <- expand.grid(c("LNCaP"), c("ARV-110", "Enza"), "DMSO", "down", "AR")
+group_combinations_2 <- expand.grid(c("LNCaP"), c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
 group_combinations <- rbind(group_combinations_1, group_combinations_2)
 colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
 

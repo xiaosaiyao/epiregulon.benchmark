@@ -1,0 +1,96 @@
+```{r cache = TRUE}
+library(GenomeInfoDb)
+library(GRaNIE)
+# Download tf binding sites from
+# https://www.embl.de/download/zaugg/diffTF/TFBS/TFBS_hg38_FIMO_HOCOMOCOv11.tar.gz
+# For details see https://difftf.readthedocs.io/en/latest/chapter2.html#dir-tfbs
+# extract tar.gz file
+
+library(readr)
+
+library(ArchR)
+# load the MAE object
+ mae <- scMultiome::reprogramSeq()
+
+ # peak matrix
+ peakMatrix <- mae[["PeakMatrix"]]
+
+ # expression matrix
+ GeneExpressionMatrix <- mae[["GeneExpressionMatrix"]]
+
+ # use ENSEMBL gene names instead of symbols (required by addTFBS)
+ # remove suffices added by ArchR to replicated gene names
+ rowData(GeneExpressionMatrix)$name <- gsub("\\.[0-9]{1,2}$", "", rowData(GeneExpressionMatrix)$name)
+ new_names <- ensembldb::mapIds(EnsDb.Hsapiens.v86::EnsDb.Hsapiens.v86, keys= as.vector(rowData(GeneExpressionMatrix)$name), keytype = "SYMBOL", columns = c("GENEID"))
+ new_names <- new_names[!is.na(new_names)]
+
+ GeneExpressionMatrix <- GeneExpressionMatrix[rowData(GeneExpressionMatrix)$name %in% names(new_names),]
+
+ rowData(GeneExpressionMatrix)$name <- new_names[rowData(GeneExpressionMatrix)$name]
+
+ rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
+
+ # add peak ID column according to GRaNIE requirements
+ peakMatrix_peakIDs <- paste0(seqnames(peakMatrix),":",start(peakMatrix),"-",end(peakMatrix))
+ peakMatrix_assay <- as.matrix(assay(peakMatrix))
+ peakMatrix_df <- cbind(data.frame(peakID = peakMatrix_peakIDs), peakMatrix_assay)
+
+ # add peak ID column according to GRaNIE requirements
+ GeneExpressionMatrix_assay <- as.matrix(assay(GeneExpressionMatrix))
+ GeneExpressionMatrix_data <- tibble::tibble(cbind(data.frame(geneID = rowData(GeneExpressionMatrix)$name), GeneExpressionMatrix_assay))
+
+ sampleMetadata <- cbind(data.frame(sample = colnames(GeneExpressionMatrix)), data.frame(hash_assignment = GeneExpressionMatrix$hash_assignment))
+
+ # non-normalized counts
+ # geneExprMatrix <- assay(seRNA)
+ # geneExprMatrix <- cbind(data.frame(geneID = rownames(seRNA), geneExprMatrix))
+
+ GRN <- initializeGRN(outputFolder = ".", genomeAssembly = "hg38")
+
+ # default normalization of peak data doesn't work since there is a zero value in each row making it impossible
+ # to calculate geometrical means
+ GRN <- addData(GRN, counts_peaks = peakMatrix_df, normalization_peaks = "limma_quantile",
+                counts_rna = GeneExpressionMatrix_data, normalization_rna = "none", idColumn_peaks = "peakID",
+                idColumn_RNA = "geneID", forceRerun = TRUE, sampleMetadata = sampleMetadata)
+
+
+
+# GRN <- plotPCA_all(GRN, outputFolder = "/gstore/project/epigen/GRaNIE/plots", type = "normalized", data = "rna", basenameOutput = "pca")
+
+# GRN <- plotPCA_all(GRN, outputFolder = "/gstore/project/epigen/GRaNIE/plots", data = "peaks", basenameOutput = "pca")
+
+
+ GRN <- GRaNIE:::addData_TFActivity(GRN)
+
+ GRN <- addTFBS(GRN, motifFolder = params$GRaNIE_tfbs, TFs = "all", filesTFBSPattern = "_TFBS",
+                fileEnding = ".bed.gz", forceRerun = TRUE)
+
+ GRN <- overlapPeaksAndTFBS(GRN, forceRerun = TRUE)
+
+ GRN <- addConnections_TF_peak(GRN, plotDiagnosticPlots = FALSE, connectionTypes = c("expression"),
+                               corMethod = "pearson", forceRerun = TRUE, outputFolder = ".")
+
+
+ # non-default value for promoterRange parameter
+ GRN <- addConnections_peak_gene(GRN, corMethod = "pearson", promoterRange = 5e5,
+                                 TADs= NULL, plotDiagnosticPlots = TRUE,
+                                 plotGeneTypes = list(c("all")), forceRerun = TRUE,
+                                 outputFolder = ".", nCores = params$n_cpu)
+
+
+
+ GRN = filterGRNAndConnectGenes(GRN, TF_peak.fdr.threshold = 0.2,
+                                peak_gene.fdr.threshold = 0.2,
+                                peak_gene.fdr.method = "BH",
+                                gene.types = c("protein_coding", "lincRNA"),
+                                allowMissingTFs = FALSE,
+                                allowMissingGenes = FALSE)
+
+
+
+GRN = add_TF_gene_correlation(GRN, corMethod = "pearson", nCores = params$n_cpu, forceRerun = TRUE)
+
+GRN_connections.all <- getGRNConnections(GRN_list, type = "all.filtered",
+                                         include_geneMetadata = TRUE,
+                                         include_TF_gene_correlations = TRUE)
+```

@@ -1,4 +1,4 @@
-```{r cache = TRUE, cache.lazy = FALSE}
+```{r}
 library(scran)
 library(scater)
 library(epiregulon)
@@ -20,26 +20,23 @@ GeneExpressionMatrix <- getMatrixFromProject(
     logFile = createLogFile("getMatrixFromProject")
 )
 
-GeneExpressionMatrix <- as(GeneExpressionMatrix, "SingleCellExperiment")
+GeneExpressionMatrix$cell_line <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",2)
 
-rowData(GeneExpressionMatrix)$strand <- "*"
-rowData_temp <- rowData(GeneExpressionMatrix)
-rowRanges(GeneExpressionMatrix) <- makeGRangesFromDataFrame(rowData(GeneExpressionMatrix))
-rowData(GeneExpressionMatrix) <- rowData_temp
-
-reducedDim(GeneExpressionMatrix, "UMAP_Combined") = getEmbedding(ArchRProj = proj,
-                                                                 embedding = "UMAP_Combined",
-                                                                 returnDF = TRUE)[colnames(GeneExpressionMatrix), ]
-colData(GeneExpressionMatrix) <- getCellColData(proj)[colnames(GeneExpressionMatrix), ]
+GeneExpressionMatrix <- ArchRMatrix2SCE(GeneExpressionMatrix, rename="normalizedCounts")
 rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
+GeneExpressionMatrix$hash_assignment <- unlist(lapply(GeneExpressionMatrix$hash_assignment, 
+                                                        function(x) gsub("-", ".", x)))
 
-names(assays(GeneExpressionMatrix)) <- "logcounts"
+TEST_ARTICLE <- setNames(c("Enza", "DMSO", "DMSO", "ARV110", "Enza", "ARV110", "A9690", "A9690"), unique(GeneExpressionMatrix$hash_assignment))
 
-GeneExpressionMatrix$Cellline <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",2)
-GeneExpressionMatrix$Treatment <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",3)
-GeneExpressionMatrix$shortlabels <- paste0(substr(GeneExpressionMatrix$Cellline, start=1, stop=1), "_",GeneExpressionMatrix$Treatment)
+GeneExpressionMatrix$TEST_ARTICLE <- TEST_ARTICLE[GeneExpressionMatrix$hash_assignment]
 
-rowData(GeneExpressionMatrix)[,c("seqnames","start","end","strand")] <- NULL
+reducedDim(GeneExpressionMatrix, "UMAP_ATAC") <- getEmbedding(ArchRProj = proj,
+                                                              embedding = "UMAP_ATAC",
+                                                              returnDF = TRUE)[colnames(GeneExpressionMatrix), ]
+
+proj <- addCellColData(proj, data = GeneExpressionMatrix$cell_line, name = "cell_line",
+                       cells = proj$cellNames)
 
 #load peakMatrix
 peakMatrix <- getMatrixFromProject(
@@ -60,42 +57,59 @@ names(assays(peakMatrix)) <- "counts"
 # epiregulon
 # get TF binding
 grl <- getTFMotifInfo(genome = "hg38")
-saveRDS(grl, "/gstore/scratch/u/wlodarct/temp/NGS4557/grl.rds")
-head(grl)
+
+
+selected <- which(proj$cell_line == params$cell_line)
+proj <- proj[proj$cell_line == params$cell_line,]
+GeneExpressionMatrix <- GeneExpressionMatrix[, selected]
+peakMatrix <- peakMatrix[, selected]
+
 
 # peak2gene links
 
 set.seed(1010)
 
+# find cell line specific peaks
+cell_peaks <- lapply(unique(proj$hash_assignment),
+                     function(cluster) {readRDS(file.path(archR_project_path, "PeakCalls", paste0(make.names(cluster), "-reproduciblePeaks.gr.rds")))})
+cell_peaks <- GenomicRanges::reduce(do.call(c, GRangesList(cell_peaks)))
+peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix))
+peakMatrix <- peakMatrix[subjectHits(peaks_overlaps),]
+
+# find peak to gene links
 p2g <- calculateP2G(peakMatrix = peakMatrix,
                     expMatrix = GeneExpressionMatrix,
                     reducedDim = reducedDim(GeneExpressionMatrix),
                     peak_assay = "counts",
-                    exp_assay = "logcounts",
-                    cor_cutoff = 0.5,
-                    clusters = GeneExpressionMatrix$Cellline
+                    exp_assay = "normalizedCounts",
+                    cor_cutoff = 0.5
 )
 
-saveRDS(p2g, "/gstore/scratch/u/wlodarct/temp/NGS4557/p2g.rds")
 
 # Construct regulons
-overlap <- addTFMotifInfo(grl = grl, p2g = p2g, peakMatrix = peakMatrix)
+overlap <- addTFMotifInfo(grl = grl,
+                          p2g = p2g,
+                          peakMatrix = peakMatrix)
 
-saveRDS(overlap, "/gstore/scratch/u/wlodarct/temp/NGS4557/overlap.rds")
+
 
 regulon_df_full <- getRegulon(p2g, overlap, aggregate = FALSE)
-saveRDS(regulon_df_full, "/gstore/scratch/u/wlodarct/temp/NGS4557/regulon_df_full.rds")
+
+
 
 
 # prune network
-pruned.regulon <- pruneRegulon(regulon = regulon_df_full[regulon_df_full$tf %in%
-                                                             c("FOXA1","AR","SMARCA4", "SMARCA2"),],
+pruned.regulon <- pruneRegulon(regulon = regulon_df_full,
                                expMatrix = GeneExpressionMatrix,
-                               exp_assay = "logcounts",
+                               exp_assay = "normalizedCounts",
                                peakMatrix = peakMatrix,
                                peak_assay = "counts",
-                               exp_cutoff = NULL,
                                prune_value = "pval",
-                               clusters = GeneExpressionMatrix$Cellline
+                               clusters = GeneExpressionMatrix$TEST_ARTICLE,
+                               exp_cutoff = NULL
 )
+
+
+
 ```
+

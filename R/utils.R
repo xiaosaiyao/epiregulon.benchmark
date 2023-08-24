@@ -1,13 +1,13 @@
 #' @export
 calculate_AUC <- function(x,y){
- y <- y[order(x)]
- x <- x[order(x)]
- non_unique_x_ind <- which(duplicated(x))
- non_unique_x_ind <- unique(non_unique_x_ind, non_unique_x_ind-1)
- y[non_unique_x_ind] <- sort(y[non_unique_x_ind])
- x_intervals <- diff(x)
- pair_mean_y <- (y[1:(length(y)-1)] + y[2:length(y)])/2
- sum(x_intervals*pair_mean_y)
+    y <- y[order(x)]
+    x <- x[order(x)]
+    non_unique_x_ind <- which(duplicated(x))
+    non_unique_x_ind <- unique(non_unique_x_ind, non_unique_x_ind-1)
+    y[non_unique_x_ind] <- sort(y[non_unique_x_ind])
+    x_intervals <- diff(x)
+    pair_mean_y <- (y[1:(length(y)-1)] + y[2:length(y)])/2
+    sum(x_intervals*pair_mean_y)
 }
 
 #' @export
@@ -76,9 +76,13 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     if(!is.na(activity_clusters))
         activity_cluster_labels <- as.vector(geneExprMatrix.sce[[activity_clusters]])
 
+    if(!is.null(weight.args$exp_assay)) exp_assay <- weight.args$exp_assay
+    else exp_assay <- formals(calculateActivity)$exp_assay
     activity.matrix <- calculateActivity(regulon = regulon.w,
                                          expMatrix = geneExprMatrix.sce,
-                                         clusters  = activity_cluster_labels)
+                                         clusters  = activity_cluster_labels,
+                                         exp_assay = exp_assay)
+
     activity.matrix <- activity.matrix[,colnames(geneExprMatrix.sce)]
     plot_data <- data.frame()
     for(i in 1:nrow(group_combinations)){
@@ -112,11 +116,11 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
 #' @import epiregulon
 #' @export
 get_activity_matrix <- function(method = NULL,
-                                 GRN = NULL,
-                                 n_bin =24,
-                                 tfs = NULL,
-                                geneExprMatrix.sce = NULL){
-    stopifnot(method %in% c("FigR", "Epiregulon", "cellOracle", "Pando", "Scenic"))
+                                GRN = NULL,
+                                tfs = NULL,
+                                geneExprMatrix.sce = NULL,
+                                exp_assay = "logcounts"){
+    stopifnot(method %in% c("FigR", "Epiregulon", "cellOracle", "Pando", "Scenic_plus","GRaNIE"))
     library(epiregulon)
     if(method == "FigR"){
         # adjust gene names to FigR
@@ -127,11 +131,24 @@ get_activity_matrix <- function(method = NULL,
             return(NULL)
         }
         return(calculateActivity(expMatrix = geneExprMatrix.sce,
-                                                         regulon = GRN))
+                                 regulon = GRN,
+                                 exp_assay = exp_assay))
+    }
+    else if(method == "GRaNIE"){
+        GRN <- GRN[,c("TF.name", "gene.name", "TF_gene.r")]
+        colnames(GRN) <- c("tf", "target", "weight")
+        if(length(intersect(tfs, GRN$tf))==0) {
+            warning("Tfs not found in the FigR output.")
+            return(NULL)
+        }
+        return(calculateActivity(expMatrix = geneExprMatrix.sce,
+                                 regulon = GRN,
+                                 exp_assay = exp_assay))
     }
     else if(method == "Epiregulon"){
         return(calculateActivity(expMatrix = geneExprMatrix.sce,
-                                                         regulon = GRN))
+                                 regulon = GRN,
+                                 exp_assay = exp_assay))
     }
     else if(method == "Pando"){
         library(Signac)
@@ -153,12 +170,20 @@ get_activity_matrix <- function(method = NULL,
             targets <- TFmodules@features$genes_pos[[tf]]
             # adjust gene name to Pando requirements
             tf <- tfs[i] <- gsub("-", "", tf)
-            Seurat_obj <- AddModuleScore(Seurat_obj, features = list(targets), name = paste0(tf, "_activity"),
-                                         nbin = n_bin)
-            activity.matrix[i,] <- Seurat_obj@meta.data[[paste0(tf, "_activity1")]]
+            Seurat_obj_2 <- NULL
+            n_bin=24
+            while(is.null(Seurat_obj_2)){
+                Seurat_obj_2 <- tryCatch({AddModuleScore(Seurat_obj, features = list(targets), name = paste0(tf, "_activity"),
+                                                         nbin = n_bin)},
+                                         error = function(cond){message(cond); message("Trying with ", n_bin-1, " bins")},
+                                         finally = {n_bin = n_bin - 1})
+
+            }
+
+            activity.matrix[i,] <- Seurat_obj_2@meta.data[[paste0(tf, "_activity1")]]
         }
         rownames(activity.matrix) <- tfs
-        colnames(activity.matrix) <- colnames(Seurat_obj)
+        colnames(activity.matrix) <- colnames(Seurat_obj_2)
         return(activity.matrix)
     }
     else if(method == "cellOracle"){
@@ -180,11 +205,12 @@ get_activity_matrix <- function(method = NULL,
         for (cluster_id in unique_clusters){
             selected_cells <- cluster_cells[[cluster_id]]
             activity_part <- calculateActivity(expMatrix = geneExprMatrix.sce[,selected_cells],
-                                                           regulon = regulon[[cluster_id]])
+                                               regulon = regulon[[cluster_id]],
+                                               exp_assay = exp_assay)
             if(is.null(activity_part))
                 activity_part <- matrix(0, ncol = length(selected_cells),
-                                              nrow  = length(tfs),
-                                              dimnames = list(tfs))
+                                        nrow  = length(tfs),
+                                        dimnames = list(tfs))
             # add values for tfs which have 0 activity in the cluster
             if (nrow(activity_part) < nrow(activity.matrix)){
                 missing_tfs <- setdiff(tfs, rownames(activity_part))
@@ -204,9 +230,9 @@ get_activity_matrix <- function(method = NULL,
 
 #' @export
 getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
-                                  labels,
-                                  positive_elements_label,
-                                  negative_elements_label, ...){
+                                   labels,
+                                   positive_elements_label,
+                                   negative_elements_label, ...){
     if(length(positive_elements_label) > 1)
         positive_elements_label <- paste(positive_elements_label, collapse = "|", sep ="")
     if(length(negative_elements_label) > 1)
@@ -217,10 +243,10 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
     res <- calculate_accuracy_metrics(activity_values, positive_elements_ind,
                                       negative_elements_ind)
     if(add_plot)
-        lines(res$FPR~res$TPR, ...)
+        lines(res$TPR~res$FPR, ...)
     else
-    plot(res$TPR~res$FPR, type ="l", xlab = "False postive rate",
-         ylab = "True positive rate", ...)
+        plot(res$TPR~res$FPR, type ="l", xlab = "False postive rate",
+             ylab = "True positive rate", ...)
     return(calculate_AUC(res$FPR, res$TPR))
 }
 

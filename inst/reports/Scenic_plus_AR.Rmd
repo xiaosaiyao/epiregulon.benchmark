@@ -1,0 +1,36 @@
+```{r cache = TRUE, cache.lazy = FALSE}
+library(ArchR)
+library(reticulate)
+ArchR_proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr")
+ArchR_proj <- addCellColData(ArchRProj = ArchR_proj, data  = sapply(strsplit(ArchR_proj$hash_assignment, split = "_"), "[",2), name = "cell_line", cells = ArchR_proj$cellNames)
+ArchR_proj <- ArchR_proj[ArchR_proj$cell_line == params$cell_line,]
+peakMatrix <- getMatrixFromProject(ArchRProj = ArchR_proj, useMatrix = "PeakMatrix")
+barcode_tab <- data.frame(barcode = colnames(peakMatrix))
+barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
+barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
+barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
+barcode_tab$hash_assignment <- colData(peakMatrix)$hash_assignment 
+sample_names <- unique(colData(peakMatrix)$Sample)
+paths_to_matrices <- character(0)
+for (i in seq_along(sample_names)){
+    paths_to_matrices[i] <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
+    write.table(assay(peakMatrix[,colData(peakMatrix)$Sample == sample_names[i]]), file = paths_to_matrices[i],
+                col.names = TRUE, row.names = TRUE, sep = "\t")
+}
+new_order <- vapply(sample_names, function(x,y) grep(x,y), params$data_file_paths, FUN.VALUE = numeric(1))
+sample_names <- sample_names[new_order]
+paths_to_matrices <- paths_to_matrices[new_order]
+
+reticulate::use_condaenv(condaenv = params$virtual_env, conda = params$conda_exe)
+reticulate::source_python(system.file("python/gene_expression_data.py", package = "epiregulon.benchmark"))
+adata <- get_annotated_data(barcode_tab, data_paths = as.list(params$data_file_paths), sample_names = as.list(sample_names), 
+    n_top_genes=as.integer(2000), mode = "scenicplus")
+
+reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+
+cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), params$work_dir, params$temp_dir, as.list(paths_to_matrices))
+
+reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
+
+scenic_plus_res <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu)
+```
