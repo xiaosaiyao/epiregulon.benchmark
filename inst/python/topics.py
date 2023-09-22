@@ -8,13 +8,14 @@ from pycisTopic.topic_binarization import *
 from pycisTopic.diff_features import *
 from scenicplus.wrappers.run_pycistarget import run_pycistarget
 
-def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path_to_peak_matrix):
+def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, paths_to_peak_matrix, n_cpu, group_variable):
     scRNA_bc = adata.obs_names
     cell_data = adata.obs
-    cell_data['HTO'] = cell_data['HTO'].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
+    cell_data[group_variable] = cell_data[group_variable].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
     #cell_data.index = list(map(lambda x: x[0]+"___"+x[1], zip(cell_data.index, cell_data['sample_id'])))
     fragments_dict = dict(zip(sample_names, paths_to_fragments))
-    cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = path_to_peak_matrix,
+    matrices_dict = dict(zip(sample_names, paths_to_peak_matrix))
+    cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = matrices_dict[key],
                                                       path_to_fragments=fragments_dict[key],
                                                       project = key) for key in fragments_dict.keys()]
     cistopic_obj = merge(cistopic_obj_list)
@@ -74,7 +75,7 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path
         dem_db_path = scores_db,
         path_to_motif_annotations = motif_annotation,
         run_without_promoters = True,
-        n_cpu = 8,
+        n_cpu = n_cpu,
         _temp_dir = os.path.join(tmp_dir, 'ray_spill'),
         annotation_version = 'v10nr_clust'
     )

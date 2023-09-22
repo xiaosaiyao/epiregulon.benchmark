@@ -3,7 +3,7 @@ calculate_AUC <- function(x,y){
     y <- y[order(x)]
     x <- x[order(x)]
     non_unique_x_ind <- which(duplicated(x))
-    non_unique_x_ind <- unique(non_unique_x_ind, non_unique_x_ind-1)
+    non_unique_x_ind <- sort(unique(c(non_unique_x_ind, non_unique_x_ind-1)))
     y[non_unique_x_ind] <- sort(y[non_unique_x_ind])
     x_intervals <- diff(x)
     pair_mean_y <- (y[1:(length(y)-1)] + y[2:length(y)])/2
@@ -45,7 +45,8 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
                               weight_clusters,
                               activity_clusters=NULL,
                               use_cell_line_weights = TRUE, group_column = "Cellline",
-                              path_to_archR_project = NULL){
+                              path_to_archR_project = NULL,
+                              treatment_column = "hash_assignment",...){
     weight.args$regulon <- regulon
     weight.args$expMatrix <- geneExprMatrix.sce
     if (!is.null(weight_clusters))
@@ -81,17 +82,19 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     activity.matrix <- calculateActivity(regulon = regulon.w,
                                          expMatrix = geneExprMatrix.sce,
                                          clusters  = activity_cluster_labels,
-                                         exp_assay = exp_assay)
+                                         exp_assay = exp_assay,...)
 
     activity.matrix <- activity.matrix[,colnames(geneExprMatrix.sce)]
     plot_data <- data.frame()
     for(i in 1:nrow(group_combinations)){
         selected_row <- group_combinations[i,]
         current_combination <- as.list(selected_row)
-        cell_line_ind <- grep(current_combination$cell_line, geneExprMatrix.sce$hash_assignment)
+        if(!is.na(current_combination$cell_line))
+            cell_line_ind <- grep(current_combination$cell_line, geneExprMatrix.sce$cell_line)
+        else cell_line_ind <- seq_len(dim(geneExprMatrix.sce)[2])
         activity_values <- activity.matrix[as.character(current_combination$transcription_factor),]
-        experimental_treatment_ind <- grep(current_combination$experimental_treatment, geneExprMatrix.sce$hash_assignment)
-        control_treatment_ind <- grep(current_combination$control_treatment, geneExprMatrix.sce$hash_assignment)
+        experimental_treatment_ind <- grep(current_combination$experimental_treatment, geneExprMatrix.sce[[treatment_column]])
+        control_treatment_ind <- grep(current_combination$control_treatment, geneExprMatrix.sce[[treatment_column]])
         if (current_combination$effect_direction == "up"){
             positive_group <- intersect(cell_line_ind, experimental_treatment_ind)
             negative_group <- intersect(cell_line_ind, control_treatment_ind)
@@ -239,7 +242,7 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
         negative_elements_label <- paste(negative_elements_label, collapse = "|", sep ="")
     positive_elements_ind <- grep(positive_elements_label, labels)
     negative_elements_ind <- grep(negative_elements_label, labels)
-    activity_values <- activity.matrix[tf, ]
+    activity_values <- activity.matrix[as.character(tf), ]
     res <- calculate_accuracy_metrics(activity_values, positive_elements_ind,
                                       negative_elements_ind)
     if(add_plot)
@@ -263,4 +266,44 @@ map_treatment_to_tf <- function(treatment, regulon){
 get_complementary_names <- function(pattern, group_names){
     complementary_names <- grep(pattern, group_names, invert = TRUE, value = TRUE)
     paste0(complementary_names, collapse = "|")
+}
+
+#' @export
+plotDataFromActivity <- function(matrices_list, tf,
+                                   labels,
+                                   positive_elements_label,
+                                   negative_elements_label,
+                                 GeneExpressionMatrix,
+                                 experimental_treatment,
+                                 title = "",
+                                 ...){
+    colors <- c(Epiregulon = "red", FigR = "black", Pando = "blue", GAaNIE = "green1",
+                cellOracle = "purple", scenic_plus_neg_gene = "grey", scenic_plus_pos_gene = "orange",
+                scenic_plus_pos_region = "green4", scenic_plus_neg_region = "tan4")
+    pos_ind <-  grep(paste(positive_elements_label, collapse = "|", sep =""), labels)
+    neg_ind <-  grep(paste(negative_elements_label, collapse = "|", sep =""), labels)
+    plot_data <- data.frame()
+    for(i in seq_along(matrices_list))
+    {
+        if(nrow(matrices_list[[i]])==0) next
+        if(!tf %in% rownames(matrices_list[[i]])) next
+        activity_values <- matrices_list[[i]][as.character(tf),colnames(GeneExpressionMatrix)]
+        res <- calculate_accuracy_metrics(activity_values, pos_ind, neg_ind)
+        partial_data <- data.frame(FPR = res$FPR, TPR = res$TPR)
+        partial_data$tf <- tf
+        partial_data$package <- names(matrices_list)[i]
+        if(!is.null(experimental_treatment)) res$treatment <- experimental_treatment
+        plot_data <- rbind(plot_data, partial_data)
+    }
+    plot_data$package <- factor(plot_data$package, levels = c("Epiregulon", setdiff(sort(unique(plot_data$package)), "Epiregulon")))
+    colors <- colors[levels(plot_data$package)]
+    library(ggplot2)
+    ggplot(data = plot_data, aes(x= FPR, y=TPR, color = package))+
+        geom_line()+
+        labs(title = substitute(title))+
+        scale_color_manual(values = colors)+
+        theme(panel.border = element_rect(color = "black", fill = NA),
+              panel.background = element_rect(fill = "white", colour="white"),
+              plot.title = element_text(hjust = 0.5))
+
 }

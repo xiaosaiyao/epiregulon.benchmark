@@ -17,6 +17,8 @@ params:
     virtual_env: ""
     work_dir: ""
     n_cpu: 4
+    group_variable: ""
+    GRaNIE_tfbs: ""
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
@@ -40,7 +42,7 @@ if(is.null(params$regulon)) eval_regulon = TRUE
 ```
 ```{r child = system.file("reports/get_matrices_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy = FALSE}
 ```
-```{r file = params$regulon_script_path, eval = FALSE}
+```{r file = params$regulon_script, eval = FALSE}
 ```
 ```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), eval = eval_regulon, echo = eval_regulon, cache=TRUE, cache.lazy=FALSE}
 ```
@@ -66,7 +68,7 @@ plot_data <- data.frame()
 ```
 
 
-```{r results = "hide", cache = TRUE, cache.lazy=FALSE}
+```{r results = "hide", cache = TRUE, cache.lazy=FALSE, message=FALSE, warning=FALSE}
 arg.list <- list()
 arg.list$peakMatrix = PeakMatrix
 arg.list$peak_assay = "counts"
@@ -107,16 +109,13 @@ if(!is.null(params$output_file_summary)) write.csv(AUC_data, params$output_file_
 ```
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list <- list()
-weight.args <- list()
+weight.args <- list(clusters = as.vector(GeneExpressionMatrix[[params$cluster_column]]), regulon = regulon,
+                    expMatrix = GeneExpressionMatrix, peakMatrix = PeakMatrix, peak_assay = "counts",
+                    method = "corr")
 # epiregulon workflow
-weight.args$clusters <- as.vector(GeneExpressionMatrix[[params$cluster_column]])
-weight.args$regulon <- regulon
-weight.args$expMatrix <- GeneExpressionMatrix
-weight.args$peakMatrix = PeakMatrix
-weight.args$peak_assay = "counts"
-weight.args$method = "corr"
 regulon.w <- do.call(addWeights, weight.args)
 GRN_list[["Epiregulon"]] <- regulon.w
+GeneExpressionMatrix_copy <- GeneExpressionMatrix
 ```
 
 ```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
@@ -133,22 +132,28 @@ GRN_list[["Pando"]] <- Seurat_obj
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["cellOracle"]] <- links
-colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 ```
 
-```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["FigR"]] <- FigR_GRN
 ```
 
-```{r child = system.file("reports/Scenic_plus_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```{r child = system.file("reports/GRaNIE_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
-saveRDS(GeneExpressionMatrix, "/gstore/scratch/u/wlodarct/GeneExpressionMatrix.rds")
-saveRDS(GRN_list, "/gstore/scratch/u/wlodarct/GRN_list.rds")
+GRN_list[["GRaNIE"]] <- GRN_connections.all
+```
+
+```{r child = system.file("reports/Scenic_plus_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```
+
+```{r cache = TRUE, cache.lazy=FALSE, message=FALSE}
+GeneExpressionMatrix <- GeneExpressionMatrix_copy
+colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
 matrices_list <- list()
 for(i in seq_along(GRN_list)){
     GRN <- GRN_list[[i]]
@@ -161,15 +166,51 @@ for(i in seq_along(GRN_list)){
 }
 
 names(matrices_list) <- names(GRN_list)
+region_based <- scenic_plus_res$region_based
+gene_based <- scenic_plus_res$gene_based
+region_based_cell_names <- gsub("\\.","-",(gsub("___reprogram","",region_based$Cell)))
+region_based_cell_names <- paste0("reprogram#",region_based_cell_names)
+gene_based_cell_names <- gsub("\\.","-",(gsub("___reprogram","",gene_based$Cell)))
+gene_based_cell_names <- paste0("reprogram#",gene_based_cell_names)
+# first column stores old cell names
+region_based_genes <- colnames(region_based)[-1]
+gene_based_genes <- colnames(gene_based)[-1]
+# convert from character to numeric
+region_based <- apply(as.matrix(region_based[,2:ncol(region_based)]),2,as.numeric)
+region_based <- t(region_based)
+colnames(region_based) <- region_based_cell_names
+rownames(region_based) <- region_based_genes
+gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
+gene_based <- t(gene_based)
+colnames(gene_based) <- gene_based_cell_names
+rownames(gene_based) <- gene_based_genes
+region_based_pos <- region_based[grep("_\\+_", rownames(region_based)),]
+region_based_neg <- region_based[grep("_-_", rownames(region_based)),]
+rownames(region_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(region_based_pos))
+rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
+gene_based_pos <- gene_based[grep("_\\+_", rownames(gene_based)),]
+gene_based_neg <- gene_based[grep("_-_", rownames(gene_based)),]
+rownames(gene_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(gene_based_pos))
+rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
+
+matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos
+matrices_list[["scenic_plus_neg_gene"]] <- gene_based_neg
+matrices_list[["scenic_plus_pos_region"]] <- region_based_pos
+matrices_list[["scenic_plus_neg_region"]] <- region_based_neg
 ```
 
 
-```{r cache = TRUE, cache.lazy=FALSE}
+```{r cache = FALSE, cache.lazy=FALSE, message=FALSE}
+library(SingleCellExperiment)
+library(epiregulon.benchmark)
 AUC_table <- data.frame()
+colors <- c("black", "blue", "red", "green1", "purple", "grey", "orange", "bisque", "green4","tan4")[1:length(matrices_list)]
+colors <- setNames(colors, names(matrices_list))
 for (tf in c("GATA6", "NKX2-1", "FOXA2")){
+    hashtag_pattern <- gsub("-", ".", tf)
     main_plot = TRUE
-    positive_elements_label <- grep(tf, unique(GeneExpressionMatrix$hash_assignment), value = TRUE)
-    negative_elements_label <- grep(tf, unique(GeneExpressionMatrix$hash_assignment), value = TRUE, invert = TRUE)
+    positive_elements_label <- grep(hashtag_pattern, unique(GeneExpressionMatrix$hash_assignment), value = TRUE)
+    negative_elements_label <- grep(hashtag_pattern, unique(GeneExpressionMatrix$hash_assignment), value = TRUE, invert = TRUE)
     for(i in seq_along(matrices_list)){
         activity.matrix <- matrices_list[[i]]
         if(!tf %in% rownames(activity.matrix)) next
@@ -181,7 +222,9 @@ for (tf in c("GATA6", "NKX2-1", "FOXA2")){
                               add_plot = FALSE,
                               positive_elements_label = positive_elements_label,
                               negative_elements_label = negative_elements_label,
-                              main = sprintf("Reprogram-seq dataset\n%s", tf))
+                              main = sprintf("Reprogram-seq dataset\n%s", tf),
+                              col = colors[i]
+                              )
                 main_plot <- FALSE
         }
         else{
@@ -190,10 +233,12 @@ for (tf in c("GATA6", "NKX2-1", "FOXA2")){
                                   labels = labels,
                                   add_plot = TRUE,
                                   positive_elements_label = positive_elements_label,
-                                  negative_elements_label = negative_elements_label)
+                                  negative_elements_label = negative_elements_label,
+                                  col = colors[i])
         }
         AUC_table <- rbind(AUC_table, data.frame(AUC = AUC, tf = tf, method = names(matrices_list)[i]))
     }
+    legend("bottomright", names(colors), col = colors, lty = rep(1, length(colors)))
 }
 print(AUC_table)
 ```

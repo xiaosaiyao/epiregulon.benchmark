@@ -5,26 +5,16 @@
 \title{Generate the report with the use of reprogram-seq data}
 \usage{
 render_report_reprogram_seq(
-  include_other_packages = FALSE,
-  regulon = NULL,
-  treatments = list(GATA6 = NULL, NKX2.1 = NULL),
-  output_file_sumary = NULL,
-  cluster_column = "Clusters",
-  regulon_script = "",
-  data_file_paths = "",
-  temp_folder = "",
-  conda_exe = "",
-  virtual_env = "",
-  work_dir = "",
-  output_file = "Reprogram-seq.html"
+  output_file = file.path(getwd(), "Reprogram-seq_benchmark.html"),
+  ...
 )
 }
 \arguments{
-\item{include_other_packages}{A logical indicating whether the raport should present
-benchmarking the results using other tools i.e. FigR, Pando, cellOracle and scenic+.}
-
 \item{regulon}{A data frame being the output from epiregulon workflow. The weight
 column, if present, will be disregarded.}
+
+\item{regulon_script}{A full path to the R script file with the code generating the regulon. It
+will not be evaluated.}
 
 \item{treatments}{A named list of character vectors. Each name corresponds to
 one treatment and each vector to respective control groups. Treatments and control groups
@@ -36,10 +26,10 @@ The default is set to \code{list(GATA6 = NULL, NKX2.1 = NULL)}.}
 \item{cluster_column}{A character specifying the column in the \code{GeneExpressionMatrix} in which cluster information
 is stored. By default is is \code{Clusters}.}
 
-\item{regulon_script}{A full path to the R script file with the code generating the regulon. It
-will not be evaluated.}
-
 \item{output_file_summary}{A path to the .csv file to which data frame with the summary of the analysis output will be saved.}
+
+\item{motif_score}{A logical indicating whether motif scores should be added. If so, regulon rows with zero motif score
+will have also 0 value for the weight.}
 }
 \description{
 Generate the report with the use of reprogram-seq data

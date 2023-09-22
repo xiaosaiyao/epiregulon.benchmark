@@ -55,7 +55,7 @@ def test_ensembl_host(scplus_obj, host, species):
     ov=len([x for x in scplus_obj.gene_names if x in gene_names_release])
     return ov
 
-def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
+def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable):
     warnings.filterwarnings("ignore")
     # Set stderr to null to avoid strange messages from ray
     _stderr = sys.stderr
@@ -89,7 +89,7 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
     try:
         run_scenicplus(
             scplus_obj = scplus_obj,
-            variable = ['GEX_HTO'],
+            variable = ['GEX_' + group_variable],
             species = 'hsapiens',
             assembly = 'hg38',
             tf_file = os.path.join(work_dir, 'data', 'utoronto_human_tfs_v_1.01.txt'),
@@ -99,9 +99,8 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu):
             downstream = [1000, 150000],
             calculate_TF_eGRN_correlation = True,
             calculate_DEGs_DARs = True,    
-            save_partial = True, #non-default
             export_to_loom_file = True,   
-            export_to_UCSC_file = False,   #non-default
+            export_to_UCSC_file = False,   #non-default, otherwise there is an error
             n_cpu = n_cpu,
             _temp_dir = os.path.join(tmp_dir, 'ray_spill'))
     except Exception as e:

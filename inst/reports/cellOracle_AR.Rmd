@@ -3,10 +3,8 @@ library(monocle3)
 library(cicero)
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(ArchR)
-proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/")
-proj <- addCellColData(ArchRProj = proj, data  = sapply(strsplit(proj$hash_assignment, split = "_"), "[",2), name = "cell_line", cells = proj$cellNames)
-proj <- proj[proj$cell_line == params$cell_line,]
-peakMatrix <- getMatrixFromProject(proj, useMatrix = "PeakMatrix")
+
+peakMatrix <- peakMatrix_base
 peak_positions <- rowRanges(peakMatrix)
 peakinfo <- data.frame(chr = as.character(seqnames(peak_positions)),
                        bp1 = as.numeric(start(peak_positions)),
@@ -81,18 +79,16 @@ all_peaks <- data.frame(x = all_peaks)
 ```{r base_GRN, cache = TRUE, cache.lazy = FALSE}
 library(basilisk)
 library(reticulate)
-GeneExpressionMatrix = getMatrixFromProject(
-    ArchRProj = proj,
-    useMatrix = "GeneExpressionMatrix"
-)
+GeneExpressionMatrix = GeneExpressionMatrix_base
+
 # use lower association_cutoff than value used in the cellOracle tutorial
 # otherwise only GATA6 and NKX2-1 will not be recovered
 base_GRN <- get_base_GRN(conns, all_peaks)
-barcode_tab <- data.frame(barcode = colnames(GeneExpressionMatrix))
+barcode_tab <- data.frame(barcode = colnames(peakMatrix))
 barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
 barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
 barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
-barcode_tab$hash_assignment <- GeneExpressionMatrix$hash_assignment 
+barcode_tab$TEST_ARTICLE <- colData(peakMatrix)$TEST_ARTICLE
 ```
 ```{r adata, cache = TRUE, cache.lazy = FALSE}
 sample_names <- unique(barcode_tab$sample_id)
@@ -106,7 +102,8 @@ adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
                             sample_names = sample_names,
                             n_top_genes=5000,
-                            python_library = "cellOracle")
+                            python_library = "cellOracle",
+                            variable = params$group_variable)
 links <- calculate_GRN(adata, base_GRN)
 louvain_clusters <- adata$obs$louvain
 ```

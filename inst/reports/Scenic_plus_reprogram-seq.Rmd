@@ -26,9 +26,9 @@ reticulate::use_condaenv(condaenv = params$virtual_env, conda = params$conda_exe
 reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
 
 cistopic_obj <- find_topics(adata, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir,
-                            params$temp_dir, path_to_peak_matrix = path_to_peak_matrix)
+                            params$temp_dir, path_to_peak_matrix = as.list(path_to_peak_matrix), params$n_cpu, params$group_variable)
 
 reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
 
-scenic_plus_res <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu)
+scenic_plus_res <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable)
 ```

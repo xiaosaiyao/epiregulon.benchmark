@@ -94,13 +94,14 @@ barcode_tab <- data.frame(barcode = colnames(mae[["GeneExpressionMatrix"]]))
 barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
 barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
 barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
-barcode_tab$hash_assignment <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment 
+barcode_tab[[params$group_variable]] <- colData(mae[["GeneExpressionMatrix"]])$hash_assignment 
 ```
 ```{r adata, cache = TRUE, cache.lazy = FALSE}
 adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
                             sample_names = unique(barcode_tab$sample_id),
-                            python_library = "cellOracle")
+                            python_library = "cellOracle",
+                            variable = params$group_variable)
 links <- calculate_GRN(adata, base_GRN)
 louvain_clusters <- adata$obs$louvain
 ```

@@ -1,17 +1,18 @@
 ```{r}
-library(scran)
-library(scater)
 library(epiregulon)
 library(ArchR)
 library(BiocParallel)
+library(GenomicRanges)
 
-#checkdata
-archR_project_path <- "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/"
-proj <- loadArchRProject(path = archR_project_path, showLogo = TRUE)
+archR_project_path <- "/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject"
+proj.all <- loadArchRProject(path = archR_project_path, showLogo = TRUE)
+proj.all <- proj.all[grep("SAM24418231|SAM24418230",proj.all$hash_assignment2),]
+proj.all <- addCellColData(ArchRProj = proj.all, data  = proj.all$Cell, name = "cell_line", cells = proj.all$cellNames)
 
+###############################
 # load gene expression matrix
 GeneExpressionMatrix <- getMatrixFromProject(
-    ArchRProj = proj,
+    ArchRProj = proj.all,
     useMatrix = "GeneExpressionMatrix",
     useSeqnames = NULL,
     verbose = TRUE,
@@ -20,27 +21,19 @@ GeneExpressionMatrix <- getMatrixFromProject(
     logFile = createLogFile("getMatrixFromProject")
 )
 
-GeneExpressionMatrix$cell_line <- sapply(strsplit(GeneExpressionMatrix$hash_assignment, split = "_"), "[",2)
-
 GeneExpressionMatrix <- ArchRMatrix2SCE(GeneExpressionMatrix, rename="normalizedCounts")
 rownames(GeneExpressionMatrix) <- rowData(GeneExpressionMatrix)$name
-GeneExpressionMatrix$hash_assignment <- unlist(lapply(GeneExpressionMatrix$hash_assignment, 
-                                                        function(x) gsub("-", ".", x)))
+GeneExpressionMatrix$TEST_ARTICLE <- factor(as.character(GeneExpressionMatrix$TEST_ARTICLE),
+                                            levels = c("DMSO", "Enza","ARV110", "A9690"))
 
-TEST_ARTICLE <- setNames(c("Enza", "DMSO", "DMSO", "ARV110", "Enza", "ARV110", "A9690", "A9690"), unique(GeneExpressionMatrix$hash_assignment))
-
-GeneExpressionMatrix$TEST_ARTICLE <- TEST_ARTICLE[GeneExpressionMatrix$hash_assignment]
-
-reducedDim(GeneExpressionMatrix, "UMAP_ATAC") <- getEmbedding(ArchRProj = proj,
+# Add embeddings
+reducedDim(GeneExpressionMatrix, "UMAP_ATAC") <- getEmbedding(ArchRProj = proj.all,
                                                               embedding = "UMAP_ATAC",
                                                               returnDF = TRUE)[colnames(GeneExpressionMatrix), ]
 
-proj <- addCellColData(proj, data = GeneExpressionMatrix$cell_line, name = "cell_line",
-                       cells = proj$cellNames)
-
 #load peakMatrix
 peakMatrix <- getMatrixFromProject(
-    ArchRProj = proj,
+    ArchRProj = proj.all,
     useMatrix = "PeakMatrix",
     useSeqnames = NULL,
     verbose = TRUE,
@@ -53,28 +46,23 @@ peakMatrix <- as(peakMatrix, "SingleCellExperiment")
 peakMatrix <- peakMatrix[, colnames(GeneExpressionMatrix)]
 names(assays(peakMatrix)) <- "counts"
 
-########################
-# epiregulon
-# get TF binding
 grl <- getTFMotifInfo(genome = "hg38")
 
-
-selected <- which(proj$cell_line == params$cell_line)
-proj <- proj[proj$cell_line == params$cell_line,]
+selected <- which(proj.all$cell_line == params$cell_line)
+proj <- proj.all[proj.all$cell_line == params$cell_line,]
 GeneExpressionMatrix <- GeneExpressionMatrix[, selected]
-peakMatrix <- peakMatrix[, selected]
-
+peakMatrix.select <- peakMatrix[, selected]
 
 # peak2gene links
 
 set.seed(1010)
 
 # find cell line specific peaks
-cell_peaks <- lapply(unique(proj$hash_assignment),
+cell_peaks <- lapply(unique(proj$hash_assignment2),
                      function(cluster) {readRDS(file.path(archR_project_path, "PeakCalls", paste0(make.names(cluster), "-reproduciblePeaks.gr.rds")))})
 cell_peaks <- GenomicRanges::reduce(do.call(c, GRangesList(cell_peaks)))
-peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix))
-peakMatrix <- peakMatrix[subjectHits(peaks_overlaps),]
+peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix.select ))
+peakMatrix <- peakMatrix.select[unique(subjectHits(peaks_overlaps)),]
 
 # find peak to gene links
 p2g <- calculateP2G(peakMatrix = peakMatrix,
@@ -85,17 +73,13 @@ p2g <- calculateP2G(peakMatrix = peakMatrix,
                     cor_cutoff = 0.5
 )
 
-
 # Construct regulons
 overlap <- addTFMotifInfo(grl = grl,
                           p2g = p2g,
                           peakMatrix = peakMatrix)
 
 
-
 regulon_df_full <- getRegulon(p2g, overlap, aggregate = FALSE)
-
-
 
 
 # prune network
@@ -109,7 +93,7 @@ pruned.regulon <- pruneRegulon(regulon = regulon_df_full,
                                exp_cutoff = NULL
 )
 
-
-
+GeneExpressionMatrix_base <- GeneExpressionMatrix
+peakMatrix_base <- peakMatrix
 ```
 

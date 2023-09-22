@@ -6,13 +6,10 @@ library(doParallel)
 library(ArchR)
 library(BSgenome.Hsapiens.UCSC.hg38)
 
-ArchR_proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr")
-ArchR_proj <- addCellColData(ArchRProj = ArchR_proj, data  = sapply(strsplit(ArchR_proj$hash_assignment, split = "_"), "[",2), name = "cell_line", cells = ArchR_proj$cellNames)
-ArchR_proj <- ArchR_proj[ArchR_proj$cell_line == params$cell_line,]
-peakMatrix.sce <- getMatrixFromProject(ArchRProj = ArchR_proj, useMatrix = "PeakMatrix")
+peakMatrix.sce <- peakMatrix_base
 # runGenePeakcorr requires assay to be Matrix or SummarizedExperiment
 assays(peakMatrix.sce)[[1]] <- Matrix::Matrix(as.matrix(assay(peakMatrix.sce), dimnames = dimnames(assay(peakMatrix.sce)), ncol = ncol(assay(peakMatrix.sce))))
-geneExprMatrix.sce <- getMatrixFromProject(ArchRProj = ArchR_proj, useMatrix = "GeneExpressionMatrix")
+geneExprMatrix.sce <- GeneExpressionMatrix_base
 geneExprMatrix <- as.matrix(assay(geneExprMatrix.sce))
 rownames(geneExprMatrix) <- rowData(geneExprMatrix.sce)$name
 
