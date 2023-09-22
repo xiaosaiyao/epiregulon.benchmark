@@ -4,10 +4,13 @@ library(ArchR)
 library(BiocParallel)
 library(GenomicRanges)
 
-archR_project_path <- "/gstore/project/ar_ligands/AR/scRNAseq/nonpipeline/OUTPUT/ArchRProject"
+
+archR_project_path <- params$path_to_ArchR_proj
 proj.all <- loadArchRProject(path = archR_project_path, showLogo = TRUE)
-proj.all <- proj.all[grep("SAM24418231|SAM24418230",proj.all$hash_assignment2),]
-proj.all <- addCellColData(ArchRProj = proj.all, data  = proj.all$Cell, name = "cell_line", cells = proj.all$cellNames)
+proj.all <- proj.all[!proj.all$hash_assignment2 %in% c(paste0("SAM24425416HTO-",14:16),
+                                                       paste0("SAM24425417HTO-",1:10),
+                                                       paste0("SAM24428812HTO-",1:6)),]
+proj.all$cell_line <- proj.all$Cell
 
 ###############################
 # load gene expression matrix
@@ -48,52 +51,96 @@ names(assays(peakMatrix)) <- "counts"
 
 grl <- getTFMotifInfo(genome = "hg38")
 
-selected <- which(proj.all$cell_line == params$cell_line)
-proj <- proj.all[proj.all$cell_line == params$cell_line,]
-GeneExpressionMatrix <- GeneExpressionMatrix[, selected]
-peakMatrix.select <- peakMatrix[, selected]
+if("LNCaP" %in% AR_cell_lines){
+    selected <- which(proj.all$cell_line == "LNCaP")
+    proj <- proj.all[proj.all$cell_line == "LNCaP",]
+    GeneExpressionMatrix_LNCaP <- GeneExpressionMatrix[, selected]
+    peakMatrix.select <- peakMatrix[, selected]
+    cell_peaks <- lapply(unique(proj$hash_assignment2),
+                         function(cluster) {readRDS(file.path(archR_project_path, "PeakCalls", paste0(make.names(cluster), "-reproduciblePeaks.gr.rds")))})
+    cell_peaks <- GenomicRanges::reduce(do.call(c, GRangesList(cell_peaks)))
+    peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix.select ))
+    peakMatrix_LNCaP <- peakMatrix.select[unique(subjectHits(peaks_overlaps)),]
+    
+    set.seed(1010, kind ="L'Ecuyer-CMRG")
+    
+    # find peak to gene links
+    p2g <- calculateP2G(peakMatrix = peakMatrix_LNCaP,
+                        expMatrix = GeneExpressionMatrix_LNCaP,
+                        reducedDim = reducedDim(GeneExpressionMatrix_LNCaP),
+                        peak_assay = "counts",
+                        exp_assay = "normalizedCounts",
+                        cor_cutoff = 0.5
+    )
+    
+    # Construct regulons
+    overlap <- addTFMotifInfo(grl = grl,
+                              p2g = p2g,
+                              peakMatrix = peakMatrix_LNCaP)
+    
+    
+    regulon_df_full_LNCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
+    if(params$save_results) saveRDS(regulon_df_full, file.path(save_path, "regulon_full_LNCaP.rds"))
+    
+    # prune network
+    pruned.regulon_LNCaP <- pruneRegulon(regulon = regulon_df_full,
+                                   expMatrix = GeneExpressionMatrix_LNCaP,
+                                   exp_assay = "normalizedCounts",
+                                   peakMatrix = peakMatrix_LNCaP,
+                                   peak_assay = "counts",
+                                   prune_value = "pval",
+                                   clusters = GeneExpressionMatrix$TEST_ARTICLE
+    )
+    
+    if(params$save_results) saveRDS(pruned.regulon_LNCaP, file.path(save_path, "pruned.regulon_LNCaP.rds"))
+        
+}
 
-# peak2gene links
 
-set.seed(1010)
+if("VCaP" %in% AR_cell_lines){
+    selected <- which(proj.all$cell_line == "VCaP")
+    proj <- proj.all[proj.all$cell_line == "VCaP",]
+    GeneExpressionMatrix_VCaP <- GeneExpressionMatrix[, selected]
+    peakMatrix.select <- peakMatrix[, selected]
+    cell_peaks <- lapply(unique(proj$hash_assignment2),
+                         function(cluster) {readRDS(file.path(archR_project_path, "PeakCalls", paste0(make.names(cluster), "-reproduciblePeaks.gr.rds")))})
+    cell_peaks <- GenomicRanges::reduce(do.call(c, GRangesList(cell_peaks)))
+    peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix.select ))
+    peakMatrix_VCaP <- peakMatrix.select[unique(subjectHits(peaks_overlaps)),]
+    
+    set.seed(1010, kind ="L'Ecuyer-CMRG")
+    
+    # find peak to gene links
+    p2g <- calculateP2G(peakMatrix = peakMatrix_VCaP,
+                        expMatrix = GeneExpressionMatrix_VCaP,
+                        reducedDim = reducedDim(GeneExpressionMatrix_VCaP),
+                        peak_assay = "counts",
+                        exp_assay = "normalizedCounts",
+                        cor_cutoff = 0.5
+    )
+    
+    # Construct regulons
+    overlap <- addTFMotifInfo(grl = grl,
+                              p2g = p2g,
+                              peakMatrix = peakMatrix_VCaP)
+    
+    
+    regulon_df_full_VCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
+    if(params$save_results) saveRDS(regulon_df_full, file.path(save_path, "regulon_full_VCaP.rds"))
+    
+    # prune network
+    pruned.regulon_VCaP <- pruneRegulon(regulon = regulon_df_full,
+                                   expMatrix = GeneExpressionMatrix_VCaP,
+                                   exp_assay = "normalizedCounts",
+                                   peakMatrix = peakMatrix_VCaP,
+                                   peak_assay = "counts",
+                                   prune_value = "pval",
+                                   clusters = GeneExpressionMatrix$TEST_ARTICLE
+    )
+    
+    if(params$save_results) saveRDS(pruned.regulon_VCaP, file.path(save_path, "pruned.regulon_VCaP.rds"))
+        
+}
 
-# find cell line specific peaks
-cell_peaks <- lapply(unique(proj$hash_assignment2),
-                     function(cluster) {readRDS(file.path(archR_project_path, "PeakCalls", paste0(make.names(cluster), "-reproduciblePeaks.gr.rds")))})
-cell_peaks <- GenomicRanges::reduce(do.call(c, GRangesList(cell_peaks)))
-peaks_overlaps <- findOverlaps(cell_peaks, rowRanges(peakMatrix.select ))
-peakMatrix <- peakMatrix.select[unique(subjectHits(peaks_overlaps)),]
-
-# find peak to gene links
-p2g <- calculateP2G(peakMatrix = peakMatrix,
-                    expMatrix = GeneExpressionMatrix,
-                    reducedDim = reducedDim(GeneExpressionMatrix),
-                    peak_assay = "counts",
-                    exp_assay = "normalizedCounts",
-                    cor_cutoff = 0.5
-)
-
-# Construct regulons
-overlap <- addTFMotifInfo(grl = grl,
-                          p2g = p2g,
-                          peakMatrix = peakMatrix)
-
-
-regulon_df_full <- getRegulon(p2g, overlap, aggregate = FALSE)
-
-
-# prune network
-pruned.regulon <- pruneRegulon(regulon = regulon_df_full,
-                               expMatrix = GeneExpressionMatrix,
-                               exp_assay = "normalizedCounts",
-                               peakMatrix = peakMatrix,
-                               peak_assay = "counts",
-                               prune_value = "pval",
-                               clusters = GeneExpressionMatrix$TEST_ARTICLE,
-                               exp_cutoff = NULL
-)
-
-GeneExpressionMatrix_base <- GeneExpressionMatrix
-peakMatrix_base <- peakMatrix
 ```
 

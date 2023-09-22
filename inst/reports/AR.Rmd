@@ -6,6 +6,21 @@ output:
   github_document:
     toc: true
     toc_depth: 2
+params:
+    data_file_paths: ""
+    temp_dir: ""
+    conda_exe: ""
+    virtual_env: ""
+    work_dir: ""
+    n_cpu: 6
+    cell_line: ""
+    GRaNIE_tfbs: ""
+    motif_score: TRUE
+    packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
+    cell_lines: "c('VCaP', 'LNCaP')"
+    save_results: TRUE
+    save_path: ""
+    path_to_ArchR_proj: ""
 ---
 
 ```{r setup, include=TRUE}
@@ -15,6 +30,20 @@ knitr::opts_chunk$set(
 	warning = FALSE
 )
 ```
+
+```{r echo = FALSE}
+benchmarked_packages <- eval(parse(text = expression(params$packages)))
+AR_cell_lines <- eval(parse(text = expression(params$cell_lines)))
+save_path <- params$save_path
+if(params$save_results && save_path == ""){
+    if(!dir.exists(file.path(getwd(), "benchmark_output")))
+        dir.create(file.path(getwd(), "benchmark_output"))
+    if(!dir.exists(file.path(getwd(), "benchmark_output", "plots")))
+        dir.create(file.path(getwd(), "benchmark_output", "plots"))
+    save_path <- file.path(getwd(), "benchmark_output")
+}
+```
+
 # Introduction
 This notebook compares across all options for weight computation which are available
 in the epiregulon package. As a ground truth NGS4557 dataset is used coming from the study on
@@ -33,187 +62,29 @@ presented in the form of curves showing the relation between false and true posi
 ```{r Epiregulon, child = system.file("reports/pruned_regulon_AR.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE}
 ```
 
-
-# Preparation of the data frame to be plotted
-
-```{r weights, cache = TRUE, cache.lazy = FALSE}
-library(ArchR)
-peakMatrix <- peakMatrix_base
-GeneExpressionMatrix <- GeneExpressionMatrix_base
-
-library(epiregulon.benchmark)
-group_combinations_1 <- expand.grid(c(params$cell_line), c("ARV110", "Enza"), "DMSO", "down", "AR")
-group_combinations_2 <- expand.grid(c(params$cell_line), c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
-group_combinations <- rbind(group_combinations_1, group_combinations_2)
-colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
-
-plot_data <- data.frame()
-```
-
-```{r plots, cache = TRUE, cache.lazy = FALSE, results = "hide", , message=FALSE, warning=FALSE}
-arg.list <- list()
-arg.list$peakMatrix = peakMatrix
-arg.list$peak_assay = "counts"
-arg.list$exp_assay = "normalizedCounts"
-weight_clusters <- as.list(c(corr = "Clusters_Combined", MI = "Clusters_Combined", lmfit = "Clusters_Combined", logFC = NULL, wilcoxon = NULL))
-activity_clusters <- c(corr = NA, MI = NA, lmfit = NA, logFC = NA, wilcoxon = NA)
-for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
-    arg.list$method = method
-    partial_data <- prepare_plot_data(regulon = pruned.regulon,
-                                      weight.args = arg.list,
-                                      group_combinations = group_combinations,
-                                      geneExprMatrix.sce = GeneExpressionMatrix,
-                                      weight_clusters = weight_clusters[[method]],
-                                      activity_clusters = activity_clusters[method],
-                                      motif_score = FALSE,
-                                      path_to_archR_project = "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/")
-    plot_data <- rbind(plot_data, partial_data)
+# LNCaP
+```{r, echo = FALSE}
+include_LNCaP <- FALSE
+if("LNCaP" %in% AR_cell_lines){
+        current_cell_line <- "LNCaP"
+        include_LNCaP <- TRUE    
 }
-
 ```
 
-```{r AUC, cache = TRUE, cache.lazy = FALSE}
-library(dplyr)
-library(ggplot2)
-
-ggplot(plot_data, aes(x=FPR, y=TPR))+
-    geom_line(aes(linetype = cell_line, color = tf))+
-    facet_grid(treatment~method)+
-    xlab("False positive rate")+
-    ylab("True positive rate")+
-    ggtitle("ROC curves for AR dataset")
-
-AUC_data <- plot_data %>% group_by(cell_line, treatment, method, tf) %>%
-    group_map(function(x,y) cbind(y, data.frame(AUC = calculate_AUC(x$FPR, x$TPR))))
-
-AUC_data <- do.call(rbind, AUC_data)
-
-print(AUC_data)
-
-GRN_list <- list()
-regulon <- addWeights(regulon = pruned.regulon, expMatrix = GeneExpressionMatrix, peakMatrix = peakMatrix, exp_assay = "normalizedCounts", peak_assay = "counts", method = "wilcoxon", clusters = GeneExpressionMatrix$TEST_ARTICLE,
-exp_cutoff = NULL)
-GRN_list$Epiregulon <- regulon
+```{r LNCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE, eval=include_LNCaP}
 ```
 
-```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
-```
-
-```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
-```
-
-
-```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
-```
-
-```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
-```
-
-```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
-```
-
-```{r cache = TRUE, cache.lazy=FALSE}
-GRN_list[["Pando"]] <- Seurat_obj 
-GRN_list[["cellOracle"]] <- links
-GRN_list[["FigR"]] <- FigR_GRN
-GRN_list[["GRaNIE"]] <- GRN_connections.all
-library(epiregulon)
-library(epiregulon.benchmark)
-GeneExpressionMatrix  <- GeneExpressionMatrix_base
-SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
-
-matrices_list <- list()
-if(length(assays(GeneExpressionMatrix))!= 1) stop("GeneExpressionMatrix should contain one assay")
-for(i in seq_along(GRN_list)){
-    GRN <- GRN_list[[i]]
-    method <- names(GRN_list)[i]
-    activity.matrix <- get_activity_matrix(GRN = GRN,
-                                           method = method,
-                                           geneExprMatrix.sce = GeneExpressionMatrix,
-                                           tfs = c("AR", "SMARCA2", "SMARCA4"),
-                                           exp_assay = names(assays(GeneExpressionMatrix))[1])
-  matrices_list[[i]] <- activity.matrix 
+# VCaP
+```{r, echo = FALSE}
+include_VCaP <- FALSE
+if("VCaP" %in% AR_cell_lines){
+        current_cell_line <- "VCaP"
+        include_VCaP <- TRUE    
 }
-names(matrices_list) <- names(GRN_list)
 ```
 
-```{r}
-gene_based <- scenic_plus_res[[1]]
-region_based <- scenic_plus_res[[2]]
-sample_id <- gsub("(.*___)(.*)", "\\2",region_based$Cell)
-barcode <- gsub("(.*)(___.*)", "\\1",region_based$Cell)
-region_based_cell_names <- paste0(sample_id, "#", barcode)
-
-sample_id <- gsub("(.*___)(.*)", "\\2",gene_based$Cell)
-barcode <- gsub("(.*)(___.*)", "\\1",gene_based$Cell)
-gene_based_cell_names <- paste0(sample_id, "#", barcode)
-
-# first column stores old cell names
-region_based_genes <- colnames(region_based)[-1]
-gene_based_genes <- colnames(gene_based)[-1]
-# convert from character to numeric
-region_based <- apply(as.matrix(region_based[,2:ncol(region_based)]),2,as.numeric)
-region_based <- t(region_based)
-colnames(region_based) <- region_based_cell_names
-rownames(region_based) <- region_based_genes
-gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
-gene_based <- t(gene_based)
-colnames(gene_based) <- gene_based_cell_names
-rownames(gene_based) <- gene_based_genes
-region_based_pos <- region_based[grep("_\\+_", rownames(region_based)),]
-region_based_neg <- region_based[grep("_-_", rownames(region_based)),]
-rownames(region_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(region_based_pos))
-rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
-gene_based_pos <- gene_based[grep("_\\+_", rownames(gene_based)),]
-gene_based_neg <- gene_based[grep("_-_", rownames(gene_based)),]
-rownames(gene_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(gene_based_pos))
-rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
-
-matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos
-matrices_list[["scenic_plus_neg_gene"]] <- gene_based_neg
-matrices_list[["scenic_plus_pos_region"]] <- region_based_pos
-matrices_list[["scenic_plus_neg_region"]] <- region_based_neg
+```{r LNCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE, eval=include_VCaP}
 ```
-
-```{r cache = FALSE, cache.lazy=FALSE}
-library(SingleCellExperiment)
-library(epiregulon.benchmark)
-AUC_table <- data.frame()
-for (i in seq_len(nrow(group_combinations))){
-    selected_row <- group_combinations[i,,drop = FALSE]
-    attach(selected_row)
-    tf <- transcription_factor
-    main_plot = TRUE
-    positive_elements_label <- grep("DMSO", unique(GeneExpressionMatrix$TEST_ARTICLE), value = TRUE)
-    negative_elements_label <- grep(experimental_treatment, unique(GeneExpressionMatrix$TEST_ARTICLE), value = TRUE)
-    for(i in seq_along(matrices_list)){
-        activity.matrix <- matrices_list[[i]]
-        if(!tf %in% rownames(activity.matrix)) next
-        labels <- colData(GeneExpressionMatrix[,colnames(activity.matrix)])$TEST_ARTICLE
-        if(main_plot) {
-                AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
-                              tf = tf,
-                              labels = labels,
-                              add_plot = FALSE,
-                              positive_elements_label = positive_elements_label,
-                              negative_elements_label = negative_elements_label,
-                              main = sprintf("AR dataset, cell line: %s\ntf: %s", cell_line, tf))
-                main_plot <- FALSE
-        }
-        else{
-            AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
-                                  tf = tf,
-                                  labels = labels,
-                                  add_plot = TRUE,
-                                  positive_elements_label = positive_elements_label,
-                                  negative_elements_label = negative_elements_label)
-        }
-        AUC_table <- rbind(AUC_table, data.frame(AUC = AUC, tf = tf, method = names(matrices_list)[i]))
-    }
-}
-print(AUC_table)
-```
-
 
 ```{r}
 print(sessionInfo())
