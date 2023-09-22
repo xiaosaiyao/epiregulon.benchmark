@@ -6,14 +6,10 @@ library(doParallel)
 library(ArchR)
 library(BSgenome.Hsapiens.UCSC.hg38)
 
-archR_project_path <- params$path_to_ArchR_proj
-proj.all <- loadArchRProject(path = archR_project_path, showLogo = TRUE)
-proj.all <- proj.all[grep("SAM24418231|SAM24418230",proj.all$hash_assignment2),]
-proj.all <- addCellColData(ArchRProj = proj.all, data  = proj.all$Cell, name = "cell_line", cells = proj.all$cellNames)
-ArchR_proj <- proj.all[proj.all$cell_line == current_cell_line,]
+proj <- proj.all[proj.all$cell_line == current_cell_line,]
 
-peakMatrix.sce <- readRDS("./peakMatrix_LNCaP.rds")
-geneExprMatrix <- assay(readRDS("./GeneExpressionMatrix_LNCaP.rds"))
+peakMatrix.sce <- get(paste0("peakMatrix_", current_cell_line))
+geneExprMatrix <- get(paste0("GeneExpressionMatrix_", current_cell_line))
 
 
 # Remove genes with zero expression across all cells
@@ -24,7 +20,7 @@ selected_sequences <- seqnames(rowRanges(peakMatrix.sce)) %in% names(BSgenome.Hs
 peakMatrix.sce <- peakMatrix.sce[selected_sequences,]
 
 # extract LSI
-LSI_ATAC <- getReducedDims(ArchR_proj, reducedDims = "IterativeLSI_ATAC")
+LSI_ATAC <- getReducedDims(proj, reducedDims = "IterativeLSI_ATAC")
 
 # Cell kNN for later use in results smoothing
 cellkNN <- get.knn(LSI_ATAC , k = 30)$nn.index
@@ -44,7 +40,7 @@ names(assays(peakMatrix.sce)) <- "counts"
 cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.sce,
                            RNAmat = geneExprMatrix,
                            genome = "hg38",
-                           nCores = 6,
+                           nCores = params$n_cpu,
                            p.cut = NULL,
                            n_bg = 100,
                            windowPadSize = 5e5)
@@ -68,22 +64,23 @@ numDorcs <- cisCorr.filt %>% group_by(Gene) %>% tally() %>%
 dorcMat <- getDORCScores(ATAC.se = peakMatrix.sce,
                          dorcTab = cisCorr.filt,
                          geneList = dorcGenes,
-                         nCores = 6)
+                         nCores = params$n_cpu)
 
 
 # smooth dorc socres using cell KNN
-dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = 6)
+dorcMat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = dorcMat, nCores = params$n_cpu)
 
 # smooth gene expression data
-RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = 6)
+RNAmat.s <- smoothScoresNN(NNmat = cellkNN[,1:30], mat = geneExprMatrix, nCores = params$n_cpu)
 
 FigR_GRN <- runFigRGRN(ATAC.se = peakMatrix.sce,
                        dorcTab = cisCorr.filt,
                        genome = "hg38",
                        dorcMat = dorcMat.s,
                        rnaMat = RNAmat.s,
-                       nCores = 6)
+                       nCores = params$n_cpu)
 
-saveRDS(FigR_GRN, "./FigR_GRN_LNCaP.rds")
+if(params$save_results)
+    saveRDS(FigR_GRN, file.path(save_path, paste0("FigR_",current_cell_line, ".rds")))
 
 ```
