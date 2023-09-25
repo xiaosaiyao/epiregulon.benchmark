@@ -11,5 +11,7 @@ venv1 <- BasiliskEnvironment(envname="cellOracle",
 venv2 <- BasiliskEnvironment(envname="scenicplus",
                             pkgname="epiregulon.benchmark",
                             pip=c("ray==2.5.0"),
+                            packages = "python=3.8",
+                            channels = "conda-forge",
                             paths = "scenicplus"
 )
