@@ -23,11 +23,6 @@ If the name points to the \code{NULL} object then control set of cell is created
 apart from that indicated by the element name. List names should contain transcription factors' names.
 The default is set to \code{list(GATA6 = NULL, NKX2.1 = NULL)}.}
 
-\item{cluster_column}{A character specifying the column in the \code{GeneExpressionMatrix} in which cluster information
-is stored. By default is is \code{Clusters}.}
-
-\item{output_file_summary}{A path to the .csv file to which data frame with the summary of the analysis output will be saved.}
-
 \item{motif_score}{A logical indicating whether motif scores should be added. If so, regulon rows with zero motif score
 will have also 0 value for the weight.}
 }
