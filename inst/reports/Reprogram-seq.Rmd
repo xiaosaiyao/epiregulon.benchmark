@@ -153,7 +153,9 @@ GRN_list[["GRaNIE"]] <- GRN_connections.all
 
 ```{r cache = TRUE, cache.lazy=FALSE, message=FALSE}
 GeneExpressionMatrix <- GeneExpressionMatrix_copy
-colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
+louvain_clusters$barcode = gsub("(.*)(___)(.*)", paste0("\\3","#","\\1"), louvain_clusters$barcode)
+louvain_clusters$barcode <- gsub("\\.","-",louvain_clusters$barcode)
+SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- as.character(louvain_clusters$cluster[match(louvain_clusters$barcode, colnames(GeneExpressionMatrix))])
 matrices_list <- list()
 for(i in seq_along(GRN_list)){
     GRN <- GRN_list[[i]]

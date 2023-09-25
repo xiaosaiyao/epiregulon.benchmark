@@ -77,13 +77,15 @@ if(params$save_results){
 GRN_list <- list()
 regulon <- addWeights(regulon = regulon, expMatrix = GeneExpressionMatrix, peakMatrix = peakMatrix, exp_assay = "normalizedCounts", peak_assay = "counts", method = "wilcoxon", clusters = GeneExpressionMatrix$TEST_ARTICLE)
 
-regulon <- addMotifScore(regulon,
+if (params$motif_score){
+    regulon <- addMotifScore(regulon,
                            species="human",
                            genome="hg38",
                            archr_path = params$path_to_ArchR_proj)
 
 
-regulon$weight[regulon$motif==0,] <- 0
+    regulon$weight[regulon$motif==0,] <- 0
+}
 
 GRN_list$Epiregulon <- regulon
 ```
@@ -112,8 +114,10 @@ GRN_list[["FigR"]] <- FigR_GRN
 GRN_list[["GRaNIE"]] <- GRN_connections.all
 library(epiregulon)
 library(epiregulon.benchmark)
-GeneExpressionMatrix  <- GeneExpressionMatrix_base
-SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- louvain_clusters
+GeneExpressionMatrix  <- get(paste0("GeneExpressionMatrix_", current_cell_line))
+louvain_clusters$barcode = gsub("(.*)(___)(.*)", paste0("\\3","#","\\1"), louvain_clusters$barcode)
+louvain_clusters$barcode <- gsub("\\.","-",louvain_clusters$barcode)
+SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- as.character(louvain_clusters$cluster[match(louvain_clusters$barcode, colnames(GeneExpressionMatrix))])
 
 matrices_list <- list()
 if(length(assays(GeneExpressionMatrix))!= 1) stop("GeneExpressionMatrix should contain one assay")

@@ -47,5 +47,5 @@ def calculate_GRN(adata, base_GRN):
 	    df_new['cluster'] = cluster
 	    df = pd.concat([df, df_new])
 
-	return df
+	return [df, pd.DataFrame({"barcode":list(adata.obs_names), "cluster":adata.obs["louvain"]})]
 

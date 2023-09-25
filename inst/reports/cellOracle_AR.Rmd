@@ -4,7 +4,7 @@ library(cicero)
 library(BSgenome.Hsapiens.UCSC.hg38)
 library(ArchR)
 
-peakMatrix <- peakMatrix_base
+peakMatrix <- get(paste0("peakMatrix_", current_cell_line))
 peak_positions <- rowRanges(peakMatrix)
 peakinfo <- data.frame(chr = as.character(seqnames(peak_positions)),
                        bp1 = as.numeric(start(peak_positions)),
@@ -79,7 +79,7 @@ all_peaks <- data.frame(x = all_peaks)
 ```{r base_GRN, cache = TRUE, cache.lazy = FALSE}
 library(basilisk)
 library(reticulate)
-GeneExpressionMatrix = GeneExpressionMatrix_base
+GeneExpressionMatrix = get(paste0("GeneExpressionMatrix_", current_cell_line))
 
 # use lower association_cutoff than value used in the cellOracle tutorial
 # otherwise only GATA6 and NKX2-1 will not be recovered
@@ -101,9 +101,11 @@ sample_names <- sample_names[new_order]
 adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
                             sample_names = sample_names,
-                            n_top_genes=5000,
+                            n_top_genes=2000,
                             python_library = "cellOracle",
-                            variable = params$group_variable)
-links <- calculate_GRN(adata, base_GRN)
-louvain_clusters <- adata$obs$louvain
+                            variable = "TEST_ARTICLE")
+res <- calculate_GRN(adata, base_GRN)
+if (params$save_results) saveRDS(res, file.path(save_path, paste0("cellOracle_AR_",current_cell_line, ".rds")))
+links <- res[[1]]
+louvain_clusters <- res[[2]]
 ```

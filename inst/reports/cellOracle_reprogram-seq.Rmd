@@ -102,6 +102,8 @@ adata <- get_annotated_data(barcode_tab,
                             sample_names = unique(barcode_tab$sample_id),
                             python_library = "cellOracle",
                             variable = params$group_variable)
-links <- calculate_GRN(adata, base_GRN)
-louvain_clusters <- adata$obs$louvain
+res <- calculate_GRN(adata, base_GRN)
+if (params$save_results) saveRDS(res, file.path(save_path, "cellOracle_Reprogram.rds"))
+links <- res[[1]]
+louvain_clusters <- res[[2]]
 ```
