@@ -23,6 +23,6 @@ render_report_reprogram_seq <- function(output_file = file.path(getwd(),"Reprogr
 #' @param path_to_ArchR_proj Absolute path the to folder with saved ArchR project in which AR dataset was analysed
 #' @export
 render_report_AR <- function(output_file = file.path(getwd(), "AR.html"), path_to_ArchR_proj, ...){
-    rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
+    rmarkdown::render(system.file("reports/AR.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
                       params = c(list(path_to_ArchR_proj = path_to_ArchR_proj), list(...)))
 }

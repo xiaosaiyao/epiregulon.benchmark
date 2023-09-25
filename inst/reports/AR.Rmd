@@ -11,7 +11,6 @@ params:
     temp_dir: ""
     work_dir: ""
     n_cpu: 6
-    cell_line: ""
     GRaNIE_tfbs: ""
     motif_score: TRUE
     packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"

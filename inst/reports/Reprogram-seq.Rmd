@@ -191,45 +191,19 @@ matrices_list[["scenic_plus_neg_region"]] <- region_based_neg
 
 
 ```{r cache = FALSE, cache.lazy=FALSE, message=FALSE}
-library(SingleCellExperiment)
-library(epiregulon.benchmark)
-AUC_table <- data.frame()
-colors <- c("black", "blue", "red", "green1", "purple", "grey", "orange", "bisque", "green4","tan4")[1:length(matrices_list)]
-colors <- setNames(colors, names(matrices_list))
-for (tf in c("GATA6", "NKX2-1", "FOXA2")){
-    hashtag_pattern <- gsub("-", ".", tf)
-    main_plot = TRUE
-    positive_elements_label <- grep(hashtag_pattern, unique(GeneExpressionMatrix$hash_assignment), value = TRUE)
-    negative_elements_label <- grep(hashtag_pattern, unique(GeneExpressionMatrix$hash_assignment), value = TRUE, invert = TRUE)
-    for(i in seq_along(matrices_list)){
-        activity.matrix <- matrices_list[[i]]
-        if(!tf %in% rownames(activity.matrix)) next
-        labels <- colData(GeneExpressionMatrix[,colnames(activity.matrix)])$hash_assignment
-        if(main_plot) {
-                AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
-                              tf = tf,
-                              labels = labels,
-                              add_plot = FALSE,
-                              positive_elements_label = positive_elements_label,
-                              negative_elements_label = negative_elements_label,
-                              main = sprintf("Reprogram-seq dataset\n%s", tf),
-                              col = colors[i]
-                              )
-                main_plot <- FALSE
-        }
-        else{
-            AUC <- getResultsFromActivity(activity.matrix = activity.matrix,
-                                  tf = tf,
-                                  labels = labels,
-                                  add_plot = TRUE,
-                                  positive_elements_label = positive_elements_label,
-                                  negative_elements_label = negative_elements_label,
-                                  col = colors[i])
-        }
-        AUC_table <- rbind(AUC_table, data.frame(AUC = AUC, tf = tf, method = names(matrices_list)[i]))
+for(i in seq_len(nrow(group_combinations))){
+    tf <- group_combinations[i,"transcription_factor"]
+    plot_data <- plotDataFromActivity(matrices_list, tf=tf,
+                     labels = GeneExpressionMatrix$hash_assignment,
+                     positive_elements_label=group_combinations[i,"experimental_treatment"],
+                     negative_elements_label=group_combinations[i,"control_treatment"],
+                     GeneExpressionMatrix,
+                     experimental_treatment = group_combinations[i,"experimental_treatment"],
+                     title = sprintf("Reprogram-seq, induced %s overexpression\n%s activity", tf, tf))
+    if(params$save_results){
+        ggsave(file.path(save_path, "plots", paste0("Reprogram-seq_by_package_", tf, ".pdf")), width = 6, height = 4)
+        write.csv(plot_data, file.path(save_path, paste0("Reprogram-seq_", tf, "_plot_data.csv")))
     }
-    legend("bottomright", names(colors), col = colors, lty = rep(1, length(colors)))
 }
-print(AUC_table)
 ```
 

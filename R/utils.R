@@ -305,5 +305,6 @@ plotDataFromActivity <- function(matrices_list, tf,
         theme(panel.border = element_rect(color = "black", fill = NA),
               panel.background = element_rect(fill = "white", colour="white"),
               plot.title = element_text(hjust = 0.5))
+    plot_data
 
 }
