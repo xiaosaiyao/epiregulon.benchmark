@@ -55,7 +55,8 @@ def test_ensembl_host(scplus_obj, host, species):
     ov=len([x for x in scplus_obj.gene_names if x in gene_names_release])
     return ov
 
-def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable):
+def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable,
+save_results, res_file, save_path):
     warnings.filterwarnings("ignore")
     # Set stderr to null to avoid strange messages from ray
     _stderr = sys.stderr
@@ -133,10 +134,13 @@ def run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable
                     auc_threshold = 0.05,
                     normalize= False,
                     n_cpu = n_cpu)
-    #scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("+","act")
-    #scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("-","supp")
-    #scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("+","act")
-    #scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("-","supp")
+    scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("+","act")
+    scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].columns.str.replace("-","supp")
+    scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("+","act")
+    scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns = scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].columns.str.replace("-","supp")
+    if save_results:
+        scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'].to_csv(os.path.join(save_path, res_file+"_genes.csv"))
+        scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'].to_csv(os.path.join(save_path, res_file+"_region.csv"))
     return list(scplus_obj.uns['eRegulon_AUC_filtered']['Gene_based'], 
     scplus_obj.uns['eRegulon_AUC_filtered']['Region_based'])
 

@@ -9,8 +9,6 @@ output:
 params:
     data_file_paths: ""
     temp_dir: ""
-    conda_exe: ""
-    virtual_env: ""
     work_dir: ""
     n_cpu: 6
     cell_line: ""
@@ -21,6 +19,7 @@ params:
     save_results: TRUE
     save_path: ""
     path_to_ArchR_proj: ""
+    group_variable: "TEST_ARTICLE"
 ---
 
 ```{r setup, include=TRUE}

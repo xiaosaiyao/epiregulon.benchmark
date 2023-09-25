@@ -75,6 +75,14 @@ if(params$save_results){
 # prepare results from Epiregulon
 # create object to store the results
 GRN_list <- list()
+```
+
+```{r echo = FALSE}
+eval_package = FALSE
+if("Epiregulon" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r cache=TRUE, cache.lazy==FALSE, eval=eval_package}
 regulon <- addWeights(regulon = regulon, expMatrix = GeneExpressionMatrix, peakMatrix = peakMatrix, exp_assay = "normalizedCounts", peak_assay = "counts", method = "wilcoxon", clusters = GeneExpressionMatrix$TEST_ARTICLE)
 
 if (params$motif_score){
@@ -90,21 +98,44 @@ if (params$motif_score){
 GRN_list$Epiregulon <- regulon
 ```
 
-
-```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("FigR" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
+```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
 ```
 
-
-```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("Pando" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
+```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
 ```
 
-```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("cellOracle" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```
+
+```{r echo = FALSE}
+eval_package = FALSE
+if("GRaNIE" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```
+
+```{r echo = FALSE}
+eval_package = FALSE
+if("scenicplus" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
@@ -157,13 +188,13 @@ gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
 gene_based <- t(gene_based)
 colnames(gene_based) <- gene_based_cell_names
 rownames(gene_based) <- gene_based_genes
-region_based_pos <- region_based[grep("_\\+_", rownames(region_based)),]
-region_based_neg <- region_based[grep("_-_", rownames(region_based)),]
-rownames(region_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(region_based_pos))
+region_based_pos <- region_based[grep("_act_", rownames(region_based)),]
+region_based_neg <- region_based[grep("_supp_", rownames(region_based)),]
+rownames(region_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(region_based_pos))
 rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
-gene_based_pos <- gene_based[grep("_\\+_", rownames(gene_based)),]
-gene_based_neg <- gene_based[grep("_-_", rownames(gene_based)),]
-rownames(gene_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(gene_based_pos))
+gene_based_pos <- gene_based[grep("_act_", rownames(gene_based)),]
+gene_based_neg <- gene_based[grep("_supp_", rownames(gene_based)),]
+rownames(gene_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(gene_based_pos))
 rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
 
 matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos

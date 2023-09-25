@@ -1,5 +1,6 @@
 import os
 import pyranges as pr
+import pickle
 from pycistarget.utils import region_names_to_coordinates
 from pycisTopic.cistopic_class import *
 from pycisTopic.lda_models import *
@@ -8,7 +9,9 @@ from pycisTopic.topic_binarization import *
 from pycisTopic.diff_features import *
 from scenicplus.wrappers.run_pycistarget import run_pycistarget
 
-def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, paths_to_peak_matrix, n_cpu, group_variable):
+def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, 
+paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
+dataset):
     scRNA_bc = adata.obs_names
     cell_data = adata.obs
     cell_data[group_variable] = cell_data[group_variable].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
@@ -20,8 +23,10 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path
                                                       project = key) for key in fragments_dict.keys()]
     cistopic_obj = merge(cistopic_obj_list)
     cistopic_obj.add_cell_data(cell_data)
+    # number of topics selected from 2,4,8,15,20,25,32,38,48
+    selected_topic_n = {'reprogam' : [20], 'VCaP' : [20], 'LNCaP' : [25]}
     models=run_cgs_models(cistopic_obj,
-                n_topics=[2,4,8,15,20,25,32,38,48],
+                n_topics=selected_topic_n[dataset],
                 n_cpu=8,
                 n_iter=500,
                 random_state=555,
@@ -33,7 +38,7 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path
                 _temp_dir = '/gstore/scratch/u/wlodarct/temp/scenic/')
                     
     model = evaluate_models(models,
-                       select_model=25,
+                       select_model=selected_topic_n[dataset][0],
                        return_model=True,
                        metrics=['Arun_2010','Cao_Juan_2009', 'Minmo_2011', 'loglikelihood'],
                        plot_metrics=False)
@@ -79,4 +84,8 @@ def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, path
         _temp_dir = os.path.join(tmp_dir, 'ray_spill'),
         annotation_version = 'v10nr_clust'
     )
+    if save_results:
+        f = open(os.path.join(save_path, file_name), "wb")
+        pickle.dump(cistopic_obj, f)
+        f.close()
     return cistopic_obj

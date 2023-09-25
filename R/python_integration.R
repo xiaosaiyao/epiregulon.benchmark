@@ -1,7 +1,7 @@
 #' @import basilisk
 #' @export
 get_base_GRN <- function(all_peaks, conns, association_cutoff = 0.8){
-    proc = basiliskStart(venv)
+    proc = basiliskStart(venv1)
     on.exit(basiliskStop(proc))
     base_GRN <- basiliskRun(proc, function(peaks, connections, cutoff){
         source_python(system.file("python/base_GRN.py", package = "epiregulon.benchmark"))
@@ -15,7 +15,7 @@ get_base_GRN <- function(all_peaks, conns, association_cutoff = 0.8){
 get_annotated_data <- function(barcode_tab, paths_to_data_files, sample_names=NULL,
                                n_top_genes=2000, python_library = "Scenic_plus",
                                variable){
-    proc = basiliskStart(venv)
+    proc = basiliskStart(venv1)
     on.exit(basiliskStop(proc))
     adata <- basiliskRun(proc, function(barcode_tab, paths, samples, n_top_genes, python_lib){
         source_python(system.file("python/gene_expression_data.py", package = "epiregulon.benchmark"))
@@ -33,7 +33,7 @@ get_annotated_data <- function(barcode_tab, paths_to_data_files, sample_names=NU
 
 #' @export
 calculate_GRN <- function(adata, base_GRN){
-    proc = basiliskStart(venv)
+    proc = basiliskStart(venv1)
     on.exit(basiliskStop(proc))
     cellorcacle_GRN <- basiliskRun(proc, function(geneExpr, GRN){
         source_python(system.file("python/calculate_GRN.py", package = "epiregulon.benchmark"))
@@ -42,3 +42,40 @@ calculate_GRN <- function(adata, base_GRN){
     }, geneExpr = adata, GRN = base_GRN)
     cellorcacle_GRN
 }
+
+#' @export
+run_scenicplus <- function(work_dir, adata, cistopic_obj, n_cpu, group_variable,
+                           save_results, res_file, save_path){
+    proc = basiliskStart(venv2)
+    on.exit(basiliskStop(proc))
+    scenicplus_res <- basiliskRun(proc, function(geneExpr, GRN){
+        source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
+        run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable,
+                                save_results, res_file, save_path)
+    }, work_dir = work_dir, adata = adata, cistopic_obj = cistopic_obj,
+    n_cpu = n_cpu, group_variable = group_variable, save_results = save_results,
+    res_file = res_file, save_path = save_path)
+    scenicplus_res
+}
+
+find_topics <- function(adata, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                        paths_to_peak_matrix, n_cpu, group_variable,
+                        save_results, file_name, save_path,
+                        dataset){
+    proc = basiliskStart(venv2)
+    on.exit(basiliskStop(proc))
+    cistopic_obj <- basiliskRun(proc, function(adata, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                                                 paths_to_peak_matrix, n_cpu, group_variable,
+                                               save_results, file_name, save_path,
+                                               dataset){
+        source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+        find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                                paths_to_peak_matrix, n_cpu, group_variable,
+                    save_results, file_name, save_path, dataset)
+    }, adata = adata, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
+    work_dir = work_dir, tmp_dir = tmp_dir,
+    paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
+    save_results = save_results, file_name = file_name, save_path = save_path, dataset = dateset)
+    cistopic_obj
+}
+

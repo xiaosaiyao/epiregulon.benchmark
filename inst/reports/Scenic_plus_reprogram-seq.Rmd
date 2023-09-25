@@ -21,14 +21,7 @@ path_to_peak_matrix <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".ts
 write.table(assay(peakMatrix), file = path_to_peak_matrix,
                 col.names = TRUE, row.names = TRUE, sep = "\t")
 
-reticulate::use_condaenv(condaenv = params$virtual_env, conda = params$conda_exe)
+cistopic_obj <- find_topics(adata, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir, params$temp_dir, path_to_peak_matrix = as.list(path_to_peak_matrix), params$n_cpu, params$group_variable, "reprogram")
 
-reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
-
-cistopic_obj <- find_topics(adata, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir,
-                            params$temp_dir, path_to_peak_matrix = as.list(path_to_peak_matrix), params$n_cpu, params$group_variable)
-
-reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
-
-scenic_plus_res <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable)
+scenic_plus_res <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, "scenicplus_reprogram_", params$save_path)
 ```

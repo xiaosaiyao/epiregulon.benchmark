@@ -6,19 +6,15 @@ output:
     toc: true
     toc_depth: 2
 params:
-    regulon: NULL
     treatments: list(GATA6 = NULL, NKX2.1 = NULL)
-    output_file_sumary: NULL
     cluster_column: "Clusters"
-    regulon_script: ""
     data_file_paths: ""
     temp_dir: ""
-    conda_exe: ""
-    virtual_env: ""
     work_dir: ""
     n_cpu: 4
-    group_variable: ""
+    group_variable: "HTO"
     GRaNIE_tfbs: ""
+    save_path: ""
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
@@ -34,19 +30,11 @@ in the `epiregulon` package. As a ground truth the reprogram-seq dataset is used
 presented in the form of curves showing the relation between false and true positive rates.
 
 # Regulon preparation
-```{r echo = FALSE}
-treatments <- eval(parse(text = params$treatments))
-regulon <- params$regulon
-eval_regulon = FALSE
-if(is.null(params$regulon)) eval_regulon = TRUE
-```
 ```{r child = system.file("reports/get_matrices_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy = FALSE}
 ```
-```{r file = params$regulon_script, eval = FALSE}
-```
-```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), eval = eval_regulon, echo = eval_regulon, cache=TRUE, cache.lazy=FALSE}
-```
 
+```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE}
+```
 
 # Preparation of the data frame to be plotted
 
@@ -186,13 +174,13 @@ gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
 gene_based <- t(gene_based)
 colnames(gene_based) <- gene_based_cell_names
 rownames(gene_based) <- gene_based_genes
-region_based_pos <- region_based[grep("_\\+_", rownames(region_based)),]
-region_based_neg <- region_based[grep("_-_", rownames(region_based)),]
-rownames(region_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(region_based_pos))
+region_based_pos <- region_based[grep("_act_", rownames(region_based)),]
+region_based_neg <- region_based[grep("_supp_", rownames(region_based)),]
+rownames(region_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(region_based_pos))
 rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
-gene_based_pos <- gene_based[grep("_\\+_", rownames(gene_based)),]
-gene_based_neg <- gene_based[grep("_-_", rownames(gene_based)),]
-rownames(gene_based_pos) <- gsub("(^.*)(_\\+_.*)","\\1",rownames(gene_based_pos))
+gene_based_pos <- gene_based[grep("_act_", rownames(gene_based)),]
+gene_based_neg <- gene_based[grep("_supp_", rownames(gene_based)),]
+rownames(gene_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(gene_based_pos))
 rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
 
 matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos
