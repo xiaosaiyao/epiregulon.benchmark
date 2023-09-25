@@ -20,30 +20,23 @@ render_report_reprogram_seq(data_file_paths = "/gne/data/lab-shares/xie-lab/Sequ
 
 
 ## Benchmarking against other tools
-The package uses `basilisk` to set up virtual environments to run the `python` code for the `cellOracle` worfklow.
-However, to run the `scenicplus` analysis user has to set up the environment manually. Here are the shell 
-commands for that:
-```
-conda create -n scenic_plus python=3.8
-conda activate scenic_plus
-git clone https://github.com/aertslab/scenicplus
-cd scenicplus
-pip install -e .
-conda install -c anaconda requests
-conda install -c numba numba
-```
+The package uses `basilisk` to set up virtual environments to run the `python` code for the `cellOracle` and `scenicplus` worfklow.
+
+Run the benchmark for the reprogram seq data using `render_report_reprogram_seq` function. Provide the
+following parameters:
+- `treatments` the list with names corresponding to transcription factors being overexpressed and list elements to the strings present in the hash tags of the background group. If elements are `NULL` objects
+then all hash tag groups apart from the target one are used as a background.
+- `data_file_paths`: paths to the Cell Ranger output (feature_matrix.h5, fragment files); each path should correspond to a single sample
+- `temp_dir`: path to the folder into which temporary from `scenicplus` analysis will be saved
+- `work_dir`: path to the folder into which intermediate files from `scenicplus` analysis will be saved
+- `n_cpu`: number of cores for parallel jobs
+- `GRaNIE_tfbs`: path to the folder with `.bam` files containing information on motif data for the `GRaNIE` workflow
+- `save_path`: path to which result of the benchmark will be saved, including plots
 
 ## To do:
 - ArchR project for NGS4557 dataset is needed
-- change the name of NGS4557 
 - remove path to ArchR project in pruned_regulon_NGS4557.Rmd
-- remove hard coded path to data matrices in scanpy code for cellOracle
-- remove calls to load_all() preceded by setting environmental variable
 - remove vignettes from .Rbuildignore
-- plot LDA models to choose opitimal number of topics for NGS4557 dataset
-- install the latest version of the scMultiSim package
 - use atacseq_counts instead of atacseq_data
-- visualization in the scenic plus workflow 
 - add paths to data files with scores/rankings/tf motifs as report parameters  
-- making gene names unique after concadetation of adata objects
-- add ncpu parameter to find_topics
+- making gene names unique after concatenation of adata objects
