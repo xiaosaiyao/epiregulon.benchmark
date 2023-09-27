@@ -57,7 +57,7 @@ presented in the form of curves showing the relation between false and true posi
 
 # Regulon preparation
 
-```{r Epiregulon, child = system.file("reports/pruned_regulon_AR.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE}
+```{r Epiregulon, child = system.file("reports/pruned_regulon_AR.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE}
 ```
 
 # LNCaP
@@ -69,7 +69,7 @@ if("LNCaP" %in% AR_cell_lines){
 }
 ```
 
-```{r LNCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE, eval=include_LNCaP}
+```{r LNCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE, eval=include_LNCaP}
 ```
 
 # VCaP
@@ -81,7 +81,7 @@ if("VCaP" %in% AR_cell_lines){
 }
 ```
 
-```{r LNCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy==FALSE, eval=include_VCaP}
+```{r VCaP, child = system.file("reports/AR_cell_line.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE, eval=include_VCaP}
 ```
 
 ```{r}
