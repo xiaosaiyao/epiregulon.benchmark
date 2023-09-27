@@ -8,7 +8,7 @@ reducedDimMatrix <- reducedDim(mae[['TileMatrix500']], "LSI_ATAC")
 grl <- getTFMotifInfo(genome = "hg38")
 
 
-set.seed(1010)
+set.seed(1010, kind ="L'Ecuyer-CMRG")
 p2g <- calculateP2G(peakMatrix = PeakMatrix, 
                     expMatrix = GeneExpressionMatrix, 
                     reducedDim = reducedDimMatrix)
