@@ -43,8 +43,7 @@ library(dplyr)
 library(ggplot2)
 
 ggplot(plot_data_all, aes(x=FPR, y=TPR))+
-    geom_line(aes(color = tf, linetype = workflow), linewidth = 0.2)+
-    scale_linetype_manual(values=c("solid", "dotted", "dashed","twodash"))+
+    geom_line(aes(color = tf), linewidth = 0.2)+
     facet_grid(treatment~method)+
     xlab("False positive rate")+
     ylab("True positive rate")+
@@ -82,7 +81,7 @@ eval_package = FALSE
 if("Epiregulon" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 regulon <- addWeights(regulon = regulon, expMatrix = GeneExpressionMatrix, peakMatrix = peakMatrix, exp_assay = "normalizedCounts", peak_assay = "counts", method = "wilcoxon", clusters = GeneExpressionMatrix$TEST_ARTICLE)
 
 if (params$motif_score){
@@ -105,7 +104,7 @@ eval_package = FALSE
 if("FigR" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r echo = FALSE}
@@ -113,7 +112,7 @@ eval_package = FALSE
 if("Pando" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r echo = FALSE}
@@ -121,7 +120,7 @@ eval_package = FALSE
 if("cellOracle" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r echo = FALSE}
@@ -129,7 +128,7 @@ eval_package = FALSE
 if("GRaNIE" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r echo = FALSE}
@@ -137,7 +136,7 @@ eval_package = FALSE
 if("scenicplus" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy==FALSE, eval=eval_package}
+```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
