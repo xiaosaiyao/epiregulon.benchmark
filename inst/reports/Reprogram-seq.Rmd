@@ -6,7 +6,7 @@ output:
     toc: true
     toc_depth: 2
 params:
-    treatments: list(GATA6 = NULL, NKX2.1 = NULL)
+    treatments: list(GATA6 = NULL, NKX2.1 = NULL, FOXA2 = NULL)
     cluster_column: "Clusters"
     data_file_paths: ""
     temp_dir: ""
@@ -16,6 +16,7 @@ params:
     GRaNIE_tfbs: ""
     save_path: ""
     packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
+    save_results: TRUE
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
@@ -81,24 +82,36 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
 
 ```
 
-```{r cache = TRUE, cache.lazy=FALSE}
+```{r weight_plots cache = TRUE, cache.lazy=FALSE}
 library(dplyr)
 library(ggplot2)
 
-ggplot(plot_data, aes(x=FPR, y=TPR))+
-    geom_line()+
-    facet_grid(treatment~method)+
+ggplot(plot_data_all, aes(x=FPR, y=TPR))+
+    geom_line(linewidth = 0.2)+
+    facet_grid(tf~method)+
     xlab("False positive rate")+
     ylab("True positive rate")+
-    ggtitle("ROC curves for reprogram-seq dataset")
+    ggtitle("ROC curves for reprogram-seq dataset")+
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          panel.background = element_rect(fill = "white", colour="white"),
+          plot.title = element_text(hjust = 0.5))
 
+if(params$save_results)
+    ggsave(file.path(save_path, "plots", "Reprogram_weight_methods.pdf"), width = 10, height = 5.5)
 
-AUC_data <- plot_data %>% group_by(cell_line, treatment, method, tf) %>%
+AUC_data <- plot_data %>% group_by(method, tf) %>%
     group_map(function(x,y) cbind(y, data.frame(AUC = calculate_AUC(x$FPR, x$TPR))))
+
 AUC_data <- do.call(rbind, AUC_data)
 
 print(AUC_data)
 
+if(params$save_results){
+    write.csv(AUC_data, file.path(save_path, "AUC_reprogram_by_weight_method.csv"))
+    write.csv(plot_data, file.path(save_path, "plot_data_reprogram_by_weight_method.csv"))
+}
+
+# save copy of GeneExpressionMatrix since it might be changed in the following workflows
 GeneExpressionMatrix_copy <- GeneExpressionMatrix
 ```
 ```{r echo = FALSE, cache = TRUE, cache.lazy=FALSE}
