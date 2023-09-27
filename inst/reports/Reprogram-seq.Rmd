@@ -15,6 +15,7 @@ params:
     group_variable: "HTO"
     GRaNIE_tfbs: ""
     save_path: ""
+    packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
@@ -36,11 +37,15 @@ presented in the form of curves showing the relation between false and true posi
 ```{r child = system.file("reports/pruned_regulon_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE}
 ```
 
+```{r echo=FALSE}
+AR_cell_lines <- eval(parse(text = expression(params$cell_lines)))
+```
+
 # Preparation of the data frame to be plotted
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 library(epiregulon.benchmark)
-group_combinations <- expand.grid("", names(treatments), NA, "up", "")
+group_combinations <- expand.grid(NA, names(treatments), NA, "up", "")
 colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
 control_treatment <- c()
 for(i in seq_along(treatments)){
@@ -60,6 +65,7 @@ plot_data <- data.frame()
 arg.list <- list()
 arg.list$peakMatrix = PeakMatrix
 arg.list$peak_assay = "counts"
+arg.list$tf_re.merge = TRUE
 weight_clusters  <- as.list(setNames(rep(params$cluster_column, 3), c("corr", "MI", "lmfit")))
 for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
     arg.list$method = method
@@ -68,7 +74,8 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
                                       group_combinations = group_combinations,
                                       geneExprMatrix.sce = GeneExpressionMatrix,
                                       weight_clusters = weight_clusters[[method]],
-                                      activity_clusters = NA)
+                                      activity_clusters = NA,
+                                      motif_score = FALSE)
     plot_data <- rbind(plot_data, partial_data)
 }
 
@@ -91,22 +98,38 @@ AUC_data <- plot_data %>% group_by(cell_line, treatment, method, tf) %>%
 AUC_data <- do.call(rbind, AUC_data)
 
 print(AUC_data)
+
+GeneExpressionMatrix_copy <- GeneExpressionMatrix
 ```
-```{r echo = FALSE, cache.lazy=FALSE}
+```{r echo = FALSE, cache = TRUE, cache.lazy=FALSE}
 if(!is.null(params$output_file_summary)) write.csv(AUC_data, params$output_file_summary)
 ```
-```{r cache = TRUE, cache.lazy=FALSE}
+```{r echo=FALSE}
 GRN_list <- list()
+```
+
+```{r echo = FALSE}
+eval_package = FALSE
+if("Epiregulon" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 weight.args <- list(clusters = as.vector(GeneExpressionMatrix[[params$cluster_column]]), regulon = regulon,
                     expMatrix = GeneExpressionMatrix, peakMatrix = PeakMatrix, peak_assay = "counts",
-                    method = "corr")
+                    method = "corr", tf_re.merge = TRUE)
 # epiregulon workflow
 regulon.w <- do.call(addWeights, weight.args)
 GRN_list[["Epiregulon"]] <- regulon.w
-GeneExpressionMatrix_copy <- GeneExpressionMatrix
+if(params$save_results)
+    saveRDS(regulon.w, file.path(save_path, "Epiregulon_reprogram.rds"))
 ```
 
-```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("Pando" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
@@ -114,29 +137,48 @@ Seurat_obj  <- Seurat::RenameCells(Seurat_obj, new.names = paste0("reprogram#", 
 GRN_list[["Pando"]] <- Seurat_obj 
 ```
 
+```{r echo = FALSE}
+eval_package = FALSE
+if("cellOracle" %in% benchmarked_packages) eval_package = TRUE
+```
 
-```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["cellOracle"]] <- links
 ```
 
-```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("FigR" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r child = system.file("reports/FigR_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
 GRN_list[["FigR"]] <- FigR_GRN
 ```
 
-```{r child = system.file("reports/GRaNIE_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("GRaNIE" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r cache = TRUE, cache.lazy=FALSE}
+```{r child = system.file("reports/GRaNIE_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE,message=FALSE, eval=eval_package}
+```
+
+```{r cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 GRN_list[["GRaNIE"]] <- GRN_connections.all
 ```
 
-```{r child = system.file("reports/Scenic_plus_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE}
+```{r echo = FALSE}
+eval_package = FALSE
+if("scenicplus" %in% benchmarked_packages) eval_package = TRUE
+```
+
+```{r child = system.file("reports/Scenic_plus_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE, message=FALSE}
@@ -156,39 +198,9 @@ for(i in seq_along(GRN_list)){
 }
 
 names(matrices_list) <- names(GRN_list)
-region_based <- scenic_plus_res$region_based
-gene_based <- scenic_plus_res$gene_based
-region_based_cell_names <- gsub("\\.","-",(gsub("___reprogram","",region_based$Cell)))
-region_based_cell_names <- paste0("reprogram#",region_based_cell_names)
-gene_based_cell_names <- gsub("\\.","-",(gsub("___reprogram","",gene_based$Cell)))
-gene_based_cell_names <- paste0("reprogram#",gene_based_cell_names)
-# first column stores old cell names
-region_based_genes <- colnames(region_based)[-1]
-gene_based_genes <- colnames(gene_based)[-1]
-# convert from character to numeric
-region_based <- apply(as.matrix(region_based[,2:ncol(region_based)]),2,as.numeric)
-region_based <- t(region_based)
-colnames(region_based) <- region_based_cell_names
-rownames(region_based) <- region_based_genes
-gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
-gene_based <- t(gene_based)
-colnames(gene_based) <- gene_based_cell_names
-rownames(gene_based) <- gene_based_genes
-region_based_pos <- region_based[grep("_act_", rownames(region_based)),]
-region_based_neg <- region_based[grep("_supp_", rownames(region_based)),]
-rownames(region_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(region_based_pos))
-rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
-gene_based_pos <- gene_based[grep("_act_", rownames(gene_based)),]
-gene_based_neg <- gene_based[grep("_supp_", rownames(gene_based)),]
-rownames(gene_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(gene_based_pos))
-rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
-
-matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos
-matrices_list[["scenic_plus_neg_gene"]] <- gene_based_neg
-matrices_list[["scenic_plus_pos_region"]] <- region_based_pos
-matrices_list[["scenic_plus_neg_region"]] <- region_based_neg
+if(exists("scenic_plus_res"))
+    marices_list <- c(matrices_list, scenic_plus_res)
 ```
-
 
 ```{r cache = FALSE, cache.lazy=FALSE, message=FALSE}
 for(i in seq_len(nrow(group_combinations))){
