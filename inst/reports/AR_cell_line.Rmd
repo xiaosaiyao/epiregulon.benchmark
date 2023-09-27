@@ -96,6 +96,8 @@ if (params$motif_score){
 }
 
 GRN_list$Epiregulon <- regulon
+if(params$save_results)
+    saveRDS(regulon, file.path(save_path, paste0("Epiregulon_AR_", current_cell_line, ".rds")))
 ```
 
 ```{r echo = FALSE}
@@ -163,44 +165,12 @@ for(i in seq_along(GRN_list)){
   matrices_list[[i]] <- activity.matrix 
 }
 names(matrices_list) <- names(GRN_list)
+if(exists("scenic_plus_res"))
+    marices_list <- c(matrices_list, scenic_plus_res)
 ```
 
 ```{r}
-gene_based <- scenic_plus_res[[1]]
-region_based <- scenic_plus_res[[2]]
-sample_id <- gsub("(.*___)(.*)", "\\2",region_based$Cell)
-barcode <- gsub("(.*)(___.*)", "\\1",region_based$Cell)
-region_based_cell_names <- paste0(sample_id, "#", barcode)
 
-sample_id <- gsub("(.*___)(.*)", "\\2",gene_based$Cell)
-barcode <- gsub("(.*)(___.*)", "\\1",gene_based$Cell)
-gene_based_cell_names <- paste0(sample_id, "#", barcode)
-
-# first column stores old cell names
-region_based_genes <- colnames(region_based)[-1]
-gene_based_genes <- colnames(gene_based)[-1]
-# convert from character to numeric
-region_based <- apply(as.matrix(region_based[,2:ncol(region_based)]),2,as.numeric)
-region_based <- t(region_based)
-colnames(region_based) <- region_based_cell_names
-rownames(region_based) <- region_based_genes
-gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
-gene_based <- t(gene_based)
-colnames(gene_based) <- gene_based_cell_names
-rownames(gene_based) <- gene_based_genes
-region_based_pos <- region_based[grep("_act_", rownames(region_based)),]
-region_based_neg <- region_based[grep("_supp_", rownames(region_based)),]
-rownames(region_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(region_based_pos))
-rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
-gene_based_pos <- gene_based[grep("_act_", rownames(gene_based)),]
-gene_based_neg <- gene_based[grep("_supp_", rownames(gene_based)),]
-rownames(gene_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(gene_based_pos))
-rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
-
-matrices_list[["scenic_plus_pos_gene"]] <- gene_based_pos
-matrices_list[["scenic_plus_neg_gene"]] <- gene_based_neg
-matrices_list[["scenic_plus_pos_region"]] <- region_based_pos
-matrices_list[["scenic_plus_neg_region"]] <- region_based_neg
 ```
 
 ```{r cache = FALSE, cache.lazy=FALSE}

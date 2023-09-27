@@ -30,5 +30,41 @@ if(!dir.exists(work_dir)) dir.create(work_dir)
 cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, params$save_path,
                             current_cell_line)
 
-scenic_plus_res <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), params$save_path)
+eRegulons <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), params$save_path)
+
+gene_based <- eRegulons[[1]]
+region_based <- eRegulons[[2]]
+# adjust cell names
+region_based_cell_names <- gsub("(.*)(___)(.*)","\\3#\\1",region_based$Cell)
+gene_based_cell_names <- gsub("(.*)(___)(.*)","\\3#\\1",gene_based$Cell)
+
+# first column stores old cell names
+region_based_genes <- colnames(region_based)[-1]
+gene_based_genes <- colnames(gene_based)[-1]
+# convert from character to numeric
+region_based <- apply(as.matrix(region_based[,2:ncol(region_based)]),2,as.numeric)
+region_based <- t(region_based)
+# apply new cell names
+colnames(region_based) <- region_based_cell_names
+rownames(region_based) <- region_based_genes
+# the same for gene based eRegulons
+gene_based <- apply(as.matrix(gene_based[,2:ncol(gene_based)]),2,as.numeric)
+gene_based <- t(gene_based)
+colnames(gene_based) <- gene_based_cell_names
+rownames(gene_based) <- gene_based_genes
+region_based_pos <- region_based[grep("_act_", rownames(region_based)),]
+region_based_neg <- region_based[grep("_supp_", rownames(region_based)),]
+# extract gene names and use as row names
+rownames(region_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(region_based_pos))
+rownames(region_based_pos) <- gsub("_extended","",rownames(region_based_pos))
+gene_based_pos <- gene_based[grep("_act_", rownames(gene_based)),]
+gene_based_neg <- gene_based[grep("_supp_", rownames(gene_based)),]
+rownames(gene_based_pos) <- gsub("(^.*)(_act_.*)","\\1",rownames(gene_based_pos))
+rownames(gene_based_pos) <- gsub("_extended","",rownames(gene_based_pos))
+
+scenic_plus_res <- list()
+scenic_plus_res[["scenic_plus_pos_gene"]] <- gene_based_pos
+scenic_plus_res[["scenic_plus_neg_gene"]] <- gene_based_neg
+scenic_plus_res[["scenic_plus_pos_region"]] <- region_based_pos
+scenic_plus_res[["scenic_plus_neg_region"]] <- region_based_neg
 ```
