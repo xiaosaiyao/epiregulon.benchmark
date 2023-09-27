@@ -15,7 +15,8 @@ for (i in seq_along(sample_names)){
 adata <- get_annotated_data(barcode_tab, 
                             paths_to_data_files = params$data_file_paths,
                             sample_names = barcode_tab$sample_id[1],
-                            python_library = "scenicplus")
+                            python_library = "scenicplus",
+                            variable = params$group_variable)
 
 path_to_peak_matrix <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
 write.table(assay(peakMatrix), file = path_to_peak_matrix,

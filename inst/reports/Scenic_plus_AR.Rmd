@@ -1,4 +1,4 @@
-```{r cache = TRUE, cache.lazy = FALSE}
+```{r adata cache = TRUE, cache.lazy = FALSE}
 library(ArchR)
 peakMatrix <- get(paste0("peakMatrix_", current_cell_line))
 barcode_tab <- data.frame(barcode = colnames(peakMatrix))
@@ -20,7 +20,9 @@ new_order <- vapply(sample_names, function(x,y) grep(x,y), params$data_file_path
 sample_names <- sample_names[new_order]
 paths_to_matrices <- paths_to_matrices[new_order]
 
-adata <- get_annotated_data(barcode_tab, data_paths = as.list(params$data_file_paths), sample_names = as.list(sample_names), n_top_genes=as.integer(2000), mode = "scenicplus", variable = params$group_variable)
+adata <- get_annotated_data(barcode_tab, data_paths = as.list(params$data_file_paths), sample_names = as.list(sample_names), n_top_genes=as.integer(2000), python_library = "scenicplus", variable = params$group_variable)
+```
+```{r cistopic cache = TRUE, cache.lazy = FALSE}
 
 cistopic_file <- paste0("cistopic_obj_", current_cell_line, ".pkl")
 
@@ -29,7 +31,8 @@ if(!dir.exists(work_dir)) dir.create(work_dir)
 
 cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, params$save_path,
                             current_cell_line)
-
+```
+```{r scenicplus_main cache = TRUE, cache.lazy = FALSE}
 eRegulons <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), params$save_path)
 
 gene_based <- eRegulons[[1]]
