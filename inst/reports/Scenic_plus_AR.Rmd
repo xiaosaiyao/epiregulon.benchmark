@@ -29,11 +29,11 @@ cistopic_file <- paste0("cistopic_obj_", current_cell_line, ".pkl")
 work_dir <- file.path(work_dir, current_cell_line)
 if(!dir.exists(work_dir)) dir.create(work_dir)
 
-cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, params$save_path,
+cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path,
                             current_cell_line)
 ```
 ```{r scenicplus_main cache = TRUE, cache.lazy = FALSE}
-eRegulons <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), params$save_path)
+eRegulons <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), save_path)
 
 gene_based <- eRegulons[[1]]
 region_based <- eRegulons[[2]]
@@ -70,4 +70,6 @@ scenic_plus_res[["scenic_plus_pos_gene"]] <- gene_based_pos
 scenic_plus_res[["scenic_plus_neg_gene"]] <- gene_based_neg
 scenic_plus_res[["scenic_plus_pos_region"]] <- region_based_pos
 scenic_plus_res[["scenic_plus_neg_region"]] <- region_based_neg
+if(params$save_results)
+    saveRDS(scenic_plus_res, file.path(save_path, paste0("scenic_plus_res_", current_cell_line, ".rds")))
 ```

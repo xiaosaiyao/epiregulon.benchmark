@@ -24,7 +24,7 @@ write.table(assay(peakMatrix), file = path_to_peak_matrix,
 
 cistopic_obj <- find_topics(adata, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir, params$temp_dir, path_to_peak_matrix = as.list(path_to_peak_matrix), params$n_cpu, params$group_variable, "reprogram")
 
-eRegulons <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, "scenicplus_reprogram_", params$save_path)
+eRegulons <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, "scenicplus_reprogram_", save_path)
 
 gene_based <- eRegulons[[1]]
 region_based <- eRegulons[[2]]
@@ -61,4 +61,6 @@ scenic_plus_res[["scenic_plus_pos_gene"]] <- gene_based_pos
 scenic_plus_res[["scenic_plus_neg_gene"]] <- gene_based_neg
 scenic_plus_res[["scenic_plus_pos_region"]] <- region_based_pos
 scenic_plus_res[["scenic_plus_neg_region"]] <- region_based_neg
+if(params$save_results)
+    saveRDS(scenic_plus_res, file.path(save_path, "scenic_plus_res_reprogram.rds"))
 ```
