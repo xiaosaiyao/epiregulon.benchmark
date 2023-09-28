@@ -5,11 +5,12 @@ library(FNN)
 library(doParallel)
 library(ArchR)
 library(BSgenome.Hsapiens.UCSC.hg38)
+library(SummarizedExperiment)
 
 proj <- proj.all[proj.all$cell_line == current_cell_line,]
 
 peakMatrix.sce <- get(paste0("peakMatrix_", current_cell_line))
-geneExprMatrix <- get(paste0("GeneExpressionMatrix_", current_cell_line))
+geneExprMatrix <- assay(get(paste0("GeneExpressionMatrix_", current_cell_line)), "normalizedCounts")
 
 
 # Remove genes with zero expression across all cells
