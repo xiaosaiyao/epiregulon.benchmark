@@ -80,16 +80,16 @@ if("LNCaP" %in% AR_cell_lines){
     
     
     regulon_df_full_LNCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
-    if(params$save_results) saveRDS(regulon_df_full, file.path(save_path, "regulon_full_LNCaP.rds"))
+    if(params$save_results) saveRDS(regulon_df_full_LNCaP, file.path(save_path, "regulon_full_LNCaP.rds"))
     
     # prune network
-    pruned.regulon_LNCaP <- pruneRegulon(regulon = regulon_df_full,
+    pruned.regulon_LNCaP <- pruneRegulon(regulon = regulon_df_full_LNCaP,
                                    expMatrix = GeneExpressionMatrix_LNCaP,
                                    exp_assay = "normalizedCounts",
                                    peakMatrix = peakMatrix_LNCaP,
                                    peak_assay = "counts",
                                    prune_value = "pval",
-                                   clusters = GeneExpressionMatrix$TEST_ARTICLE
+                                   clusters = GeneExpressionMatrix_LNCaP$TEST_ARTICLE
     )
     
     if(params$save_results) saveRDS(pruned.regulon_LNCaP, file.path(save_path, "pruned.regulon_LNCaP.rds"))
@@ -126,16 +126,16 @@ if("VCaP" %in% AR_cell_lines){
     
     
     regulon_df_full_VCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
-    if(params$save_results) saveRDS(regulon_df_full, file.path(save_path, "regulon_full_VCaP.rds"))
+    if(params$save_results) saveRDS(regulon_df_full_VCaP, file.path(save_path, "regulon_full_VCaP.rds"))
     
     # prune network
-    pruned.regulon_VCaP <- pruneRegulon(regulon = regulon_df_full,
+    pruned.regulon_VCaP <- pruneRegulon(regulon = regulon_df_full_VCaP,
                                    expMatrix = GeneExpressionMatrix_VCaP,
                                    exp_assay = "normalizedCounts",
                                    peakMatrix = peakMatrix_VCaP,
                                    peak_assay = "counts",
                                    prune_value = "pval",
-                                   clusters = GeneExpressionMatrix$TEST_ARTICLE
+                                   clusters = GeneExpressionMatrix_VCaP$TEST_ARTICLE
     )
     
     if(params$save_results) saveRDS(pruned.regulon_VCaP, file.path(save_path, "pruned.regulon_VCaP.rds"))

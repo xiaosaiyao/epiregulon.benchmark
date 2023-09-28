@@ -42,7 +42,7 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
 library(dplyr)
 library(ggplot2)
 
-ggplot(plot_data_all, aes(x=FPR, y=TPR))+
+ggplot(plot_data, aes(x=FPR, y=TPR))+
     geom_line(aes(color = tf), linewidth = 0.2)+
     facet_grid(treatment~method)+
     xlab("False positive rate")+
