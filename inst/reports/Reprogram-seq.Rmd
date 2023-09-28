@@ -39,7 +39,17 @@ presented in the form of curves showing the relation between false and true posi
 ```
 
 ```{r echo=FALSE}
-AR_cell_lines <- eval(parse(text = expression(params$cell_lines)))
+benchmarked_packages <- eval(parse(text = enquote(params$packages)))
+save_path <- params$save_path
+if(params$save_results && save_path == ""){
+    if(!dir.exists(file.path(getwd(), "benchmark_output")))
+        dir.create(file.path(getwd(), "benchmark_output"))
+    if(!dir.exists(file.path(getwd(), "benchmark_output", "plots")))
+        dir.create(file.path(getwd(), "benchmark_output", "plots"))
+    save_path <- file.path(getwd(), "benchmark_output")
+}
+if(!dir.exists(file.path(save_path, "plots")))
+    dir.create(file.path(save_path, "plots"))
 ```
 
 # Preparation of the data frame to be plotted
@@ -86,7 +96,7 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
 library(dplyr)
 library(ggplot2)
 
-ggplot(plot_data_all, aes(x=FPR, y=TPR))+
+ggplot(plot_data, aes(x=FPR, y=TPR))+
     geom_line(linewidth = 0.2)+
     facet_grid(tf~method)+
     xlab("False positive rate")+
