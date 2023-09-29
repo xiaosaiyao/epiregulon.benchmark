@@ -30,8 +30,8 @@ knitr::opts_chunk$set(
 ```
 
 ```{r echo = FALSE}
-benchmarked_packages <- eval(parse(text = expression(params$packages)))
-AR_cell_lines <- eval(parse(text = expression(params$cell_lines)))
+benchmarked_packages <- eval(parse(text = enquote(params$packages)))
+AR_cell_lines <- eval(parse(text = enquote(params$cell_lines)))
 save_path <- params$save_path
 if(params$save_results && save_path == ""){
     if(!dir.exists(file.path(getwd(), "benchmark_output")))
@@ -40,6 +40,8 @@ if(params$save_results && save_path == ""){
         dir.create(file.path(getwd(), "benchmark_output", "plots"))
     save_path <- file.path(getwd(), "benchmark_output")
 }
+if(!dir.exists(file.path(save_path, "plots")))
+    dir.create(file.path(save_path, "plots"))
 ```
 
 # Introduction
@@ -61,7 +63,7 @@ presented in the form of curves showing the relation between false and true posi
 ```
 
 # LNCaP
-```{r, echo = FALSE}
+```{r echo = FALSE}
 include_LNCaP <- FALSE
 if("LNCaP" %in% AR_cell_lines){
         current_cell_line <- "LNCaP"
@@ -73,7 +75,7 @@ if("LNCaP" %in% AR_cell_lines){
 ```
 
 # VCaP
-```{r, echo = FALSE}
+```{r echo = FALSE}
 include_VCaP <- FALSE
 if("VCaP" %in% AR_cell_lines){
         current_cell_line <- "VCaP"
