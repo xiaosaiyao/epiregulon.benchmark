@@ -200,42 +200,53 @@ addFalseConnections <- function(regulon, fraction_false = 0.5, seed = 10010){
 }
 
 #' @export
-getActivity <- function(regulon, geneExpMatrix, peakMatrix,
-                        weightMethods =  c("wilcoxon", "logFC", "lmfit", "corr", "MI"),
-                        clusters_list = list(), return_intermediates = FALSE, ...){
-    res <- list()
-    exp_assay <- ifelse(is.null(list(...)$exp_assay), "counts", list(...)$exp_assay)
+addWeightsVariousMethods <- function(regulon, input_objects, exp_assay = "norm_counts_obs",
+                                     peak_assay = "peak_obs",
+                                     weightMethods =  c("wilcoxon", "logFC", "lmfit", "corr", "MI"), ...){
+     clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
+                          "corr" = input_objects$geneExpMatrix$label,
+                          "MI" = input_objects$geneExpMatrix$label)
     regulon_list <- list()
-    for(method in weightMethods){
-        clusters <- clusters_list[[method]]
-        if(method == "logFC"){
-            args <- list(regulon = regulon, method = "logFC", clusters = clusters,
-                         peakMatrix = peakMatrix, expMatrix = geneExpMatrix,
-                         exp_assay = paste0("log", exp_assay))
-            args <- c(args, list(...)[names(list(...)) != "exp_assay"])
-            regulon.w <- do.call(addWeights, args)
-        }
-        else{
-            regulon.w <- addWeights(regulon,
-                                    peakMatrix = peakMatrix,
-                                    expMatrix = geneExpMatrix,
-                                    method = method,
-                                    clusters = clusters,
-                                    ...)
-        }
+    geneExpMatrix <- input_objects$geneExpMatrix
+    peakMatrix <- input_objects$peakMatrix
+     for(method in weightMethods){
+         clusters <- clusters_list[[method]]
+         if(method == "logFC"){
+             if(!grepl("log", exp_assay)) logFC_assay = paste0("log", exp_assay)
+             else logFC_assay = exp_assay
+             args <- list(regulon = regulon, method = "logFC", clusters = clusters,
+                          peakMatrix = peakMatrix, expMatrix = geneExpMatrix,
+                          exp_assay = logFC_assay, peak_assay = peak_assay)
+             args <- c(args, list(...))
+             regulon.w <- do.call(addWeights, args)
+         }
+         else{
+             regulon.w <- addWeights(regulon,
+                                     peakMatrix = peakMatrix,
+                                     expMatrix = geneExpMatrix,
+                                     method = method,
+                                     clusters = clusters,
+                                     peak_assay = peak_assay,
+                                     exp_assay = exp_assay,
+                                     ...)
+         }
+         if(is.null(regulon.w)) next
+         regulon_list <- setNames(c(regulon_list, list(regulon.w)), c(names(regulon_list), method))
+     }
+    regulon_list
+}
 
-        if(is.null(regulon.w)) next
-        score.combine <- calculateActivity(regulon = regulon.w,
+#' @export
+getActivity <- function(regulon_list, input_objects, exp_assay = "norm_counts_obs", ...){
+    res <- list()
+    for(method in names(regulon_list)){
+        score.combine <- calculateActivity(regulon = regulon_list[[method]],
                                            mode = "weight",
                                            method = "weightedMean",
-                                           expMatrix = geneExpMatrix,
-                                           exp_assay = exp_assay)
-        res[[length(res)+1]] <- score.combine
-        names(res)[length(res)] <- method
-        regulon_list <- setNames(c(regulon_list, list(regulon.w)), c(names(regulon_list), method))
-    }
-    if(return_intermediates){
-        return(list(activity_list = res, regulon_list = regulon_list))
+                                           expMatrix = input_objects$geneExpMatrix,
+                                           exp_assay = exp_assay,
+                                           ...)
+        res <- setNames(c(res, list(score.combine)), c(names(res), method))
     }
     res
 }
@@ -263,35 +274,29 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                              clusters = input_objects$geneExpMatrix$label,
                              regulon_cutoff = 2,
                              ...)
+    regulon_list <- addWeightsVariousMethods(regulon, input_objects,
+                                             exp_cutoff = weights_exp_cutoff,
+                                             peak_cutoff = weights_peak_cutoff,
+                                             exp_assay = exp_assay,
+                                             peak_assay = peak_assay,
+                                             aggregateCells = aggregateCells,
+                                             tf_re.merge = tf_re.merge)
     df <- data.frame()
-    for(p_val_cutoff in regulon_cutoffs){
-        pruned.regulon <- filterRegulonPVal(regulon, p_val_cutoff, only_clusters = only_clusters)
-        if(nrow(pruned.regulon) == 0) next
-        activity_res <- activity_data <- getActivity(regulon = pruned.regulon,
-                                     geneExpMatrix = input_objects$geneExpMatrix,
-                                     peakMatrix = input_objects$peakMatrix,
-                                     exp_cutoff = weights_exp_cutoff,
-                                     peak_cutoff = weights_peak_cutoff,
-                                     peak_assay = peak_assay,
-                                     exp_assay = exp_assay,
-                                     clusters_list = list("lmfit" = input_objects$geneExpMatrix$label,
-                                                          "corr" = input_objects$geneExpMatrix$label,
-                                                          "MI" = input_objects$geneExpMatrix$label),
-                                    return_intermediates = return_intermediates,
-                                     aggregateCells = aggregateCells,
-                                     tf_re.merge = tf_re.merge)
-        if(return_intermediates) activity_data <- activity_res$activity_list
-        for(i in seq_along(activity_data)){
-            method_res <- assessActivityAccuracy(activities_obs = activity_data[[i]],
-                                                 transcription_difference_matrix = transcription_difference_matrix)
-            # account for no tf being recovered
-            if(is.null(method_res)) next
-            df_part <- data.frame(tf = names(method_res),
-                                  method = names(activity_data)[i],
-                                  correlations = method_res)
-            df_part$n_tf <- nrow(activity_data[[i]])
-            df_part$pval_cutoff <- p_val_cutoff
-            df <- rbind(df, df_part)
+        for(p_val_cutoff in regulon_cutoffs){
+            regulon_list_pruned <- lapply(regulon_list, function(x) filterRegulonPVal(x, p_val_cutoff, only_clusters = only_clusters))
+            activity_list <- getActivity(regulon_list_pruned, input_objects, exp_assay = exp_assay)
+            for(i in seq_along(activity_list)){
+                method_res <- assessActivityAccuracy(activities_obs = activity_list[[i]],
+                                                     transcription_difference_matrix = transcription_difference_matrix)
+                # account for no tf being recovered
+                if(is.null(method_res)) next
+                df_part <- data.frame(tf = names(method_res),
+                                      method = names(activity_list)[i],
+                                      correlations = method_res)
+                df_part$n_tf <- nrow(activity_list[[i]])
+                df_part$pval_cutoff <- p_val_cutoff
+                df <- rbind(df, df_part)
+            }
         }
         if(TF_expression){
             tf_expression_matrix <- assay(input_objects$geneExpMatrix, exp_assay)[rownames(transcription_difference_matrix),]
@@ -303,12 +308,11 @@ accuracyComparisonPruning <- function(regulon, input_objects,
                                   method = "TF expression",
                                   correlations = method_res)
             df_part$n_tf <- nrow(transcription_difference_matrix)
-            df_part$pval_cutoff <- p_val_cutoff
+            df_part$pval_cutoff <- NA
             df <- rbind(df, df_part)
 
         }
-    }
-    if(return_intermediates) return(c(list(df=df), activity_res))
+    if(return_intermediates) return(list(df = df, regulon_list = regulon_list))
     df
 }
 
