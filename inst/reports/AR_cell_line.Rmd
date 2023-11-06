@@ -136,7 +136,7 @@ eval_package = FALSE
 if("scenicplus" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=FALSE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
@@ -176,16 +176,17 @@ if(exists("scenic_plus_res"))
 for(i in seq_len(nrow(group_combinations))){
     drug_name <- c(ARV110 = "AR degrader", Enza = "Enzalutamide", A9690 = "A9690")[group_combinations[i,"experimental_treatment"]]
     tf <- group_combinations[i,"transcription_factor"]
-    plot_data <- plotDataFromActivity(matrices_list, tf=tf,
+    res<- plotDataFromActivity(matrices_list, tf=tf,
                      labels = GeneExpressionMatrix$TEST_ARTICLE,
                      positive_elements_label=group_combinations[i,"control_treatment"],
                      negative_elements_label=group_combinations[i,"experimental_treatment"],
                      GeneExpressionMatrix,
                      experimental_treatment = group_combinations[i,"experimental_treatment"],
                      title = sprintf("%s cells, %s treated, %s activity", current_cell_line, drug_name, tf))
+    plot(res[[1]])
     if(params$save_results){
         ggsave(file.path(save_path, "plots", paste0(tf, "_", current_cell_line, "_", group_combinations[i,"experimental_treatment"], "_by_package.pdf")), width = 6, height = 4)
-        write.csv(plot_data, file.path(save_path, paste0(tf, "_", current_cell_line, "_", group_combinations[i,"experimental_treatment"], "_plot_data.csv")))
+        write.csv(res[[2]], file.path(save_path, paste0(tf, "_", current_cell_line, "_", group_combinations[i,"experimental_treatment"], "_plot_data.csv")))
     }
 }
 ```
