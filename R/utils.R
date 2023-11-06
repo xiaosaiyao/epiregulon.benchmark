@@ -51,6 +51,9 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     weight.args$expMatrix <- geneExprMatrix.sce
     if (!is.null(weight_clusters))
         weight.args$clusters <- as.vector(geneExprMatrix.sce[[weight_clusters]])
+    if(weight.args$method == "logFC"){
+        assays(weight.args$expMatrix, withDimnames = TRUE)[[weight.args$exp_assay]] <- log2(assays(weight.args$expMatrix, withDimnames = TRUE)[[weight.args$exp_assay]]+1)
+    }
     regulon.w <- do.call(addWeights, weight.args)
     if (motif_score){
         if (is.null(path_to_archR_project)){
@@ -138,10 +141,12 @@ get_activity_matrix <- function(method = NULL,
                                  exp_assay = exp_assay))
     }
     else if(method == "GRaNIE"){
-        GRN <- GRN[,c("TF.name", "gene.name", "TF_gene.r")]
+        #GRN <- GRN[,c("TF.name", "gene.name", "TF_gene.r")]
+        GRN <- GRN[,c("TF.name", "gene.name")]
+        GRN$weight <- 1
         colnames(GRN) <- c("tf", "target", "weight")
         if(length(intersect(tfs, GRN$tf))==0) {
-            warning("Tfs not found in the FigR output.")
+            warning("Tfs not found in the GRaNIE output.")
             return(NULL)
         }
         return(calculateActivity(expMatrix = geneExprMatrix.sce,
@@ -277,12 +282,15 @@ plotDataFromActivity <- function(matrices_list, tf,
                                  experimental_treatment,
                                  title = "",
                                  ...){
-    colors <- c(Epiregulon = "red", FigR = "black", Pando = "blue", GAaNIE = "green1",
+    colors <- c(Epiregulon = "red", FigR = "black", Pando = "blue", GRaNIE = "green1",
                 cellOracle = "purple", scenic_plus_neg_gene = "grey", scenic_plus_pos_gene = "orange",
-                scenic_plus_pos_region = "green4", scenic_plus_neg_region = "tan4")
+                scenic_plus_pos_region = "green4", scenic_plus_neg_region = "tan4",
+                "Gene expression" = "darkslategray2")
     pos_ind <-  grep(paste(positive_elements_label, collapse = "|", sep =""), labels)
     neg_ind <-  grep(paste(negative_elements_label, collapse = "|", sep =""), labels)
     plot_data <- data.frame()
+    matrices_list <- c(matrices_list, list("Gene expression" = assay(GeneExpressionMatrix, "normalizedCounts")[tf,,drop=FALSE]))
+    colnames(matrices_list[[length(matrices_list)]]) <- colnames(GeneExpressionMatrix)
     for(i in seq_along(matrices_list))
     {
         if(nrow(matrices_list[[i]])==0) next
@@ -298,13 +306,12 @@ plotDataFromActivity <- function(matrices_list, tf,
     plot_data$package <- factor(plot_data$package, levels = c("Epiregulon", setdiff(sort(unique(plot_data$package)), "Epiregulon")))
     colors <- colors[levels(plot_data$package)]
     library(ggplot2)
-    ggplot(data = plot_data, aes(x= FPR, y=TPR, color = package))+
+    ggp <- ggplot(data = plot_data, aes(x= FPR, y=TPR, color = package))+
         geom_line()+
         labs(title = substitute(title))+
         scale_color_manual(values = colors)+
         theme(panel.border = element_rect(color = "black", fill = NA),
               panel.background = element_rect(fill = "white", colour="white"),
               plot.title = element_text(hjust = 0.5))
-    plot_data
-
+    return(list(ggp,plot_data))
 }
