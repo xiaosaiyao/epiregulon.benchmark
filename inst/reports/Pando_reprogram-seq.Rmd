@@ -1,4 +1,4 @@
-```{r cache = TRUE}
+```{r cache = FALSE, cache.lazy = FALSE}
 library(Signac)
 library(Seurat)
 library(BSgenome.Hsapiens.UCSC.hg38)
@@ -11,7 +11,7 @@ library(epiregulon.benchmark)
 
 mae <- scMultiome::reprogramSeq()
 geneExprMatrix <- mae[["GeneExpressionMatrix"]]
-geneExprCounts <- assays(geneExprMatrix)$logcounts
+geneExprCounts <- assays(geneExprMatrix)$normalizedCounts
 colnames(geneExprCounts) <- gsub("reprogram#", "", colnames(geneExprCounts))
 GEX_assay <- CreateAssayObject(data = as.matrix(geneExprCounts))
 
@@ -83,5 +83,8 @@ Seurat_obj <- find_motifs(
 # Infer gene regulatory network (only variable features are taken)
 Seurat_obj <- infer_grn(Seurat_obj,
                                 parallel = TRUE)
+
+if(params$save_results)
+    saveRDS(Seurat_obj, file.path(save_path, "Pando_reprogram.rds"))
 
 ```
