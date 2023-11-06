@@ -61,24 +61,16 @@ Seurat_obj <- merge(NGS4557_data_1, NGS4557_data_2)
 ################
 # HTO
 ################
-archR_project_path = "/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr/"
-proj <- loadArchRProject(path = archR_project_path, showLogo = FALSE)
-proj <- loadArchRProject("/gstore/project/ar_ligands/AR/scRNAseq/NGS4557_BRG1i/OUTPUT/gp.sa.archr")
-proj <- addCellColData(ArchRProj = proj, data  = sapply(strsplit(proj$hash_assignment, split = "_"), "[",2), name = "cell_line", cells = proj$cellNames)
-proj <- proj[proj$cell_line == params$cell_line,]
-geneExprMatrix = getMatrixFromProject(
-    ArchRProj = proj,
-    useMatrix = "GeneExpressionMatrix"
-)
+geneExprMatrix = get(paste0("GeneExpressionMatrix_", current_cell_line))
 Seurat_obj <- subset(Seurat_obj, cells = colnames(geneExprMatrix))
 geneExprMatrix <- geneExprMatrix[,colnames(Seurat_obj)]
-Seurat_obj <- AddMetaData(Seurat_obj, metadata = geneExprMatrix$hash_assignment,
-                                  col.name = "hash_assignment")
+Seurat_obj <- AddMetaData(Seurat_obj, metadata = geneExprMatrix$TEST_ARTICLE,
+                                  col.name = "TEST_ARTICLE")
 
 ################
 # peak counts
 ################
-peakMatrix.sce <- getMatrixFromProject(ArchRProj = proj, useMatrix = "PeakMatrix")
+peakMatrix.sce <- get(paste0("peakMatrix_", current_cell_line))
 peakCounts <- assay(peakMatrix.sce)
 peakRanges <- rowRanges(peakMatrix.sce)
 peakRanges <- paste(seqnames(peakRanges), ranges(peakRanges) ,sep = "-")
@@ -158,5 +150,8 @@ Seurat_obj <- find_motifs(
 # Infer gene regulatory network (only variable features are taken)
 Seurat_obj <- infer_grn(Seurat_obj,
                                 parallel = TRUE)
+
+if(params$save_results)
+    saveRDS(Seurat_obj, file.path(save_path, paste0("Pando_",current_cell_line, ".rds")))
 
 ```
