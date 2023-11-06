@@ -1,9 +1,6 @@
 #' Generate the report with the use of reprogram-seq data
 #'
-#' @param regulon A data frame being the output from epiregulon workflow. The weight
-#' column, if present, will be disregarded.
-#' @param regulon_script A full path to the R script file with the code generating the regulon. It
-#' will not be evaluated.
+#' @param
 #' @param treatments A named list of character vectors. Each name corresponds to
 #' one treatment and each vector to respective control groups. Treatments and control groups
 #' are matched to the values in the `hash_assignment` column from the `GeneExpressionMatrix`.
@@ -14,15 +11,23 @@
 #' @param motif_score A logical indicating whether motif scores should be added. If so, regulon rows with zero motif score
 #' will have also 0 value for the weight.
 #' @export
-render_report_reprogram_seq <- function(output_file = file.path(getwd(),"Reprogram-seq_benchmark.html"), ...){
-    rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
-                      params = list(...))
+render_report_reprogram_seq <- function(output_file="Reprogram-seq_benchmark.html",
+                                        data_file_paths="/gne/data/lab-shares/xie-lab/Sequencing_Data/2022/mapping/20220124_ReprogramSeq_Multiome/JT65_67/outs/"){
+    rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format="all", output_file=output_file,
+                      params=c(list(data_file_paths = data_file_paths), list(...)))
 }
-
 
 #' @param path_to_ArchR_proj Absolute path the to folder with saved ArchR project in which AR dataset was analysed
 #' @export
-render_report_AR <- function(output_file = file.path(getwd(), "AR.html"), path_to_ArchR_proj, ...){
-    rmarkdown::render(system.file("reports/AR.Rmd", package = "epiregulon.benchmark"), output_format = "all", output_file = output_file,
-                      params = c(list(path_to_ArchR_proj = path_to_ArchR_proj), list(...)))
+render_report_AR <- function(output_file="AR.html", path_to_ArchR_proj,
+                             data_file_paths = c("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/",
+                                                 "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/"), ...){
+    rmarkdown::render(system.file("reports/AR.Rmd", package="epiregulon.benchmark"), output_format="all", output_file=output_file,
+                      params=c(list(data_file_paths = data_file_paths, path_to_ArchR_proj=path_to_ArchR_proj), list(...)))
+}
+
+#' @export
+render_report_simulation <- function(output_file = "AR.html", ...){
+    rmarkdown::render(system.file("reports/Simulation_benchmark.Rmd", package="epiregulon.benchmark"), output_format="all", output_file=output_file,
+                      params=list(...))
 }
