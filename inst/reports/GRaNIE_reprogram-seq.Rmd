@@ -59,9 +59,6 @@ library(ArchR)
 
 # GRN <- plotPCA_all(GRN, outputFolder = "/gstore/project/epigen/GRaNIE/plots", data = "peaks", basenameOutput = "pca")
 
-
- GRN <- GRaNIE:::addData_TFActivity(GRN)
-
  GRN <- addTFBS(GRN, motifFolder = params$GRaNIE_tfbs, TFs = "all", filesTFBSPattern = "_TFBS",
                 fileEnding = ".bed.gz", forceRerun = TRUE)
 
@@ -73,7 +70,7 @@ library(ArchR)
 
  # non-default value for promoterRange parameter
  GRN <- addConnections_peak_gene(GRN, corMethod = "pearson", promoterRange = 5e5,
-                                 TADs= NULL, plotDiagnosticPlots = TRUE,
+                                 TADs= NULL, plotDiagnosticPlots = FALSE,
                                  plotGeneTypes = list(c("all")), forceRerun = TRUE,
                                  outputFolder = ".", nCores = params$n_cpu)
 
@@ -90,7 +87,10 @@ library(ArchR)
 
 GRN = add_TF_gene_correlation(GRN, corMethod = "pearson", nCores = params$n_cpu, forceRerun = TRUE)
 
-GRN_connections.all <- getGRNConnections(GRN_list, type = "all.filtered",
+GRN_connections.all <- getGRNConnections(GRN, type = "all.filtered",
                                          include_geneMetadata = TRUE,
                                          include_TF_gene_correlations = TRUE)
+
+if(params$save_results)
+    saveRDS(GRN_connections.all, file.path(save_path, "GRaNIE_reprogram.rds"))
 ```
