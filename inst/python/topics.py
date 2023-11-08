@@ -8,10 +8,35 @@ from pycisTopic.clust_vis import *
 from pycisTopic.topic_binarization import *
 from pycisTopic.diff_features import *
 from scenicplus.wrappers.run_pycistarget import run_pycistarget
+import scanpy as sc 
+import anndata as ad
 
-def find_topics(adata, sample_names, paths_to_fragments, work_dir, tmp_dir, 
+def find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
 paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
-dataset):
+dataset, n_top_genes=2000):
+    import pickle
+    f = open("/gstore/scratch/u/wlodarct/temp.pkl", "wb")
+    l1 = [barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
+paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
+dataset, n_top_genes]
+    pickle.dump(l1, f)
+    f.close()
+    # set directory with data
+    adata_list = list(map(lambda x: sc.read_10x_h5(os.path.join(x, "filtered_feature_bc_matrix.h5")), paths_to_fragments))
+    for i in range(len(sample_names)):
+        adata_list[i].obs['sample_id'] = sample_names[i]
+        adata_list[i].obs_names = list(map(lambda x: x.replace("-", "."), adata_list[i].obs_names))
+        sample_barcodes = barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]]["barcode"]
+        if False in list(map(lambda x: x in adata_list[i].obs_names, sample_barcodes)):
+            raise Exception("All barcodes should be present in the gene expression data")
+        adata_list[i] = adata_list[i][sample_barcodes,]
+        adata_list[i].obs[group_variable] = barcode_tab.loc[barcode_tab['sample_id'] == sample_names[i]][group_variable].values
+        adata_list[i].obs_names = list(map(lambda x: x[0]+"___"+x[1], zip(adata_list[i].obs_names, adata_list[i].obs['sample_id'])))
+        adata_list[i].var_names_make_unique()
+    adatas = dict(zip(sample_names, adata_list))
+    adata = ad.concat(adatas, label = "dataset")
+    
+    
     scRNA_bc = adata.obs_names
     cell_data = adata.obs
     cell_data[group_variable] = cell_data[group_variable].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
@@ -27,7 +52,7 @@ dataset):
     selected_topic_n = {'reprogam' : [20], 'VCaP' : [20], 'LNCaP' : [25]}
     models=run_cgs_models(cistopic_obj,
                 n_topics=selected_topic_n[dataset],
-                n_cpu=8,
+                n_cpu=n_cpu,
                 n_iter=500,
                 random_state=555,
                 alpha=50,
@@ -88,4 +113,4 @@ dataset):
         f = open(os.path.join(save_path, file_name), "wb")
         pickle.dump(cistopic_obj, f)
         f.close()
-    return cistopic_obj
+    return list(cistopic_obj, adata)
