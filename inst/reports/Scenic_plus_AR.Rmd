@@ -1,39 +1,37 @@
-```{r adata cache = TRUE, cache.lazy = FALSE}
+```{r cache = TRUE, cache.lazy = FALSE}
 library(ArchR)
+library(epiregulon.benchmark)
 peakMatrix <- get(paste0("peakMatrix_", current_cell_line))
 barcode_tab <- data.frame(barcode = colnames(peakMatrix))
 barcode_tab$sample_id <- gsub("(.*)(#.*)", "\\1",barcode_tab$barcode)
 barcode_tab$barcode <- gsub(".*#", "",barcode_tab$barcode)
 barcode_tab$barcode <- gsub("-", "\\.",barcode_tab$barcode)
 barcode_tab[[params$group_variable]] <- colData(peakMatrix)$TEST_ARTICLE 
+peakMatrix_assay <- as.matrix(SummarizedExperiment::assay(peakMatrix))
+rownames(peakMatrix_assay) <- paste0(as.character(seqnames(rowRanges(peakMatrix))),
+                               ":", as.character(ranges(rowRanges(peakMatrix))))
+colnames(peakMatrix_assay) <- gsub(".*#", "", colnames(peakMatrix_assay))
+colnames(peakMatrix_assay) <- gsub("-", "\\.", colnames(peakMatrix_assay))
 sample_names <- unique(colData(peakMatrix)$Sample)
 paths_to_matrices <- character(0)
 for (i in seq_along(sample_names)){
-    paths_to_matrices[i] <- tempfile(pattern = "", tmpdir = tempdir(), fileext = ".tsv")
-    peaks_sample <- as.matrix(peakMatrix_assay[,as.logical(colData(peakMatrix)$Sample == sample_names[i])])
-    colnames(peaks_sample) <- gsub(".*#", "", colnames(peaks_sample))
-    colnames(peaks_sample) <- gsub("-", "\\.", colnames(peaks_sample))
+    paths_to_matrices[i] <- file.path(params$work_dir, paste0("peak_matrix_",i,".tsv"))
+    peaks_sample <- peakMatrix_assay[,as.logical(colData(peakMatrix)$Sample == sample_names[i])]
     write.table(peaks_sample, file = paths_to_matrices[i],
                 col.names = TRUE, row.names = TRUE, sep = "\t")
 }
 new_order <- vapply(sample_names, function(x,y) grep(x,y), params$data_file_paths, FUN.VALUE = numeric(1))
 sample_names <- sample_names[new_order]
 paths_to_matrices <- paths_to_matrices[new_order]
-
-adata <- get_annotated_data(barcode_tab, data_paths = as.list(params$data_file_paths), sample_names = as.list(sample_names), n_top_genes=as.integer(2000), python_library = "scenicplus", variable = params$group_variable)
-```
-```{r cistopic cache = TRUE, cache.lazy = FALSE}
-
 cistopic_file <- paste0("cistopic_obj_", current_cell_line, ".pkl")
 
-work_dir <- file.path(work_dir, current_cell_line)
+work_dir <- file.path(params$work_dir, current_cell_line)
 if(!dir.exists(work_dir)) dir.create(work_dir)
 
-cistopic_obj <- find_topics(adata, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path,
-                            current_cell_line)
-```
-```{r scenicplus_main cache = TRUE, cache.lazy = FALSE}
-eRegulons <- run_scenicplus(work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), save_path)
+obj_list <- find_topics(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path,
+                            dataset = current_cell_line, 2000)
+
+eRegulons <- run_scenicplus(work_dir, obj_list[[2]], obj_list[[1]], params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), save_path)
 
 gene_based <- eRegulons[[1]]
 region_based <- eRegulons[[2]]
