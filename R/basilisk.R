@@ -7,11 +7,10 @@ venv1 <- BasiliskEnvironment(envname="cellOracle",
                             pip=c("velocyto==0.17.17", "celloracle==0.12.1")
 )
 
-
 venv2 <- BasiliskEnvironment(envname="scenicplus",
                             pkgname="epiregulon.benchmark",
-                            pip=c("ray==2.5.0"),
-                            packages = "python=3.8",
+                            pip=c("ray==2.5.0", "scikit-learn==0.24.2"),
+                            packages = c("python=3.9"),
                             channels = "conda-forge",
                             paths = "scenicplus"
 )
