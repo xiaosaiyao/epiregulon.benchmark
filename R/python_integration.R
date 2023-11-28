@@ -44,6 +44,11 @@ calculate_GRN <- function(adata, base_GRN){
 #' @export
 run_scenicplus <- function(work_dir, adata, cistopic_obj, n_cpu, group_variable,
                            save_results, res_file, save_path){
+    venv2 <- BasiliskEnvironment(envname="scenic_plus",
+                                 pkgname="epiregulon.benchmark",
+                                 packages=c(""),
+                                 channels = c(""),
+                                 pip=c(""))
     proc = basiliskStart(venv2)
     on.exit(basiliskStop(proc))
     scenicplus_res <- basiliskRun(proc, function(geneExpr, GRN){
@@ -57,6 +62,37 @@ run_scenicplus <- function(work_dir, adata, cistopic_obj, n_cpu, group_variable,
 }
 
 #' @export
+find_topics_2 <- function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                        paths_to_peak_matrix, n_cpu, group_variable,
+                        save_results, file_name, save_path,
+                        dataset, n_top_genes){
+    venv3 <- BasiliskEnvironment(envname="scenic_plus_3",
+                                 pkgname="epiregulon.benchmark",
+                                 packages=c(""),
+                                 channels = c(""),
+                                 pip=c(""))
+    # proc = basiliskStart(venv2, testload=c("scanpy","anndata","pycistarget",
+    #                                        "pycisTopic","dill","warnings","pandas","pyranges","sys","requests",
+    #                                        "numpy","pybiomart","pickle","scenicplus"))
+    proc = basiliskStart(venv3)
+    on.exit(basiliskStop(proc))
+    cistopic_obj <- basiliskRun(proc, function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                                               paths_to_peak_matrix, n_cpu, group_variable,
+                                               save_results, file_name, save_path,
+                                               dataset, n_top_genes){
+        reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+        find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                    paths_to_peak_matrix, n_cpu, group_variable,
+                    save_results, file_name, save_path, dataset, n_top_genes)
+    }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
+    work_dir = work_dir, tmp_dir = tmp_dir,
+    paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
+    save_results = save_results, file_name = file_name, save_path = save_path, dataset = dataset,
+    n_top_genes=n_top_genes)
+    obj_list
+}
+
+#' @export
 find_topics <- function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
                         paths_to_peak_matrix, n_cpu, group_variable,
                         save_results, file_name, save_path,
@@ -64,12 +100,12 @@ find_topics <- function(barcode_tab, sample_names, paths_to_fragments, work_dir,
     proc = basiliskStart(venv2)
     on.exit(basiliskStop(proc))
     cistopic_obj <- basiliskRun(proc, function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                                                 paths_to_peak_matrix, n_cpu, group_variable,
+                                               paths_to_peak_matrix, n_cpu, group_variable,
                                                save_results, file_name, save_path,
                                                dataset, n_top_genes){
         reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
         find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                                paths_to_peak_matrix, n_cpu, group_variable,
+                    paths_to_peak_matrix, n_cpu, group_variable,
                     save_results, file_name, save_path, dataset, n_top_genes)
     }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
     work_dir = work_dir, tmp_dir = tmp_dir,
@@ -78,4 +114,3 @@ find_topics <- function(barcode_tab, sample_names, paths_to_fragments, work_dir,
     n_top_genes=n_top_genes)
     cistopic_obj
 }
-
