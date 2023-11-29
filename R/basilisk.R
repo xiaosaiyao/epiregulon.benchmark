@@ -1,11 +1,10 @@
 #' @import basilisk
-# venv1 <- BasiliskEnvironment(envname="cellOracle",
-#                               pkgname="epiregulon.benchmark",
-#                               packages=c("bedtools=2.30.0", "numpy==1.23.5", "cython==0.29.33"),
-#                                          channels = c("conda-forge","pypi",
-#                                                       "bioconda"),
-#                             pip=c("velocyto==0.17.17", "celloracle==0.12.1")
-# )
+venv1 <- BasiliskEnvironment(envname="cellOracle",
+                              pkgname="epiregulon.benchmark",
+                              packages=c("bedtools=2.30.0", "numpy==1.23.5", "cython==0.29.33"),
+                                         channels = c("conda-forge","pypi",
+                                                      "bioconda"),
+                            pip=c("velocyto==0.17.17", "celloracle==0.12.1"))
 
 setBasiliskCheckVersions(FALSE) # allow for pip installation from github
 venv2 <- BasiliskEnvironment(envname="scenicplus",
@@ -16,8 +15,4 @@ venv2 <- BasiliskEnvironment(envname="scenicplus",
                                    ),
                              packages = c("python=3.8", "scanpy=1.9.5", "cython=0.29.36", "numpy=1.24.4",
                                           "pandas=1.5.0", "scipy=1.10.1", "pybiomart=0.2.0"),
-                             channels = c("conda-forge", "bioconda", "anaconda")
-
-                             #,paths=c("scenicplus", "pycisTopic", "pycistarget", "loomXpy")
-                             )
-
+                             channels = c("conda-forge", "bioconda", "anaconda"))
