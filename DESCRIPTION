@@ -45,3 +45,4 @@ Remotes:
     cole-trapnell-lab/cicero@monocle3
 LazyData: true
 VignetteBuilder: knitr
+StagedInstall: no
