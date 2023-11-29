@@ -41,12 +41,12 @@ calculate_accuracy_metrics <- function(values, positive_elements_ind, negative_e
 
 #' @export
 prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExprMatrix.sce,
-                              motif_score = TRUE, ArchR_proj_path = NULL,
+                              motif_score = TRUE, archr_path = NULL,
                               weight_clusters,
                               activity_clusters=NULL,
                               use_cell_line_weights = TRUE, group_column = "Cellline",
-                              path_to_archR_project = NULL,
-                              treatment_column = "hash_assignment",...){
+                              treatment_column = "hash_assignment",
+                              ...){
     weight.args$regulon <- regulon
     weight.args$expMatrix <- geneExprMatrix.sce
     if (!is.null(weight_clusters))
@@ -56,7 +56,7 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     }
     regulon.w <- do.call(addWeights, weight.args)
     if (motif_score){
-        if (is.null(path_to_archR_project)){
+        if (is.null(archr_path)){
             regulon.w <- addMotifScore(regulon.w,
                                        peaks = rowRanges(weight.args$peakMatrix),
                                        species="human",
@@ -67,14 +67,13 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
             regulon.w <- addMotifScore(regulon.w,
                                        species="human",
                                        genome="hg38",
-                                       archr_path = path_to_archR_project)
-
+                                       archr_path = archr_path)
         }
         # adjust action to whether weight is a matrix or vector
         if(is.null(dim(regulon.w$weight)))
-            regulon.w$weight[regulon.w$motif == 0] <- 0
+            regulon.w$weight[regulon.w$motif == 0 | is.na(regulon.w$motif)] <- 0
         else
-            regulon.w$weight[regulon.w$motif==0,] <- 0
+            regulon.w$weight[regulon.w$motif==0 | is.na(regulon.w$motif),] <- 0
     }
     activity_cluster_labels = NULL
     if(!is.na(activity_clusters))
@@ -87,11 +86,12 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
                                          clusters  = activity_cluster_labels,
                                          exp_assay = exp_assay,...)
 
-    activity.matrix <- activity.matrix[,colnames(geneExprMatrix.sce)]
+    activity.matrix <- activity.matrix[,colnames(geneExprMatrix.sce),drop=FALSE]
     plot_data <- data.frame()
     for(i in 1:nrow(group_combinations)){
         selected_row <- group_combinations[i,]
         current_combination <- as.list(selected_row)
+        if (!as.character(current_combination$transcription_factor) %in% rownames(activity.matrix)) next
         if(!is.na(current_combination$cell_line))
             cell_line_ind <- grep(current_combination$cell_line, geneExprMatrix.sce$cell_line)
         else cell_line_ind <- seq_len(dim(geneExprMatrix.sce)[2])
@@ -119,14 +119,14 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
     plot_data
 }
 
-#' @import epiregulon
+#' @import epiregulon.archr
 #' @export
 get_activity_matrix <- function(method = NULL,
                                 GRN = NULL,
                                 tfs = NULL,
                                 geneExprMatrix.sce = NULL,
                                 exp_assay = "logcounts"){
-    stopifnot(method %in% c("FigR", "Epiregulon", "cellOracle", "Pando", "Scenic_plus","GRaNIE"))
+    if(!method %in% c("FigR", "Epiregulon", "cellOracle", "Pando","GRaNIE")) return(NULL)
     library(epiregulon)
     if(method == "FigR"){
         # adjust gene names to FigR
@@ -141,9 +141,8 @@ get_activity_matrix <- function(method = NULL,
                                  exp_assay = exp_assay))
     }
     else if(method == "GRaNIE"){
-        #GRN <- GRN[,c("TF.name", "gene.name", "TF_gene.r")]
         GRN <- GRN[,c("TF.name", "gene.name")]
-        GRN$weight <- 1
+        GRN$weight <- 1 # set weights to 1
         colnames(GRN) <- c("tf", "target", "weight")
         if(length(intersect(tfs, GRN$tf))==0) {
             warning("Tfs not found in the GRaNIE output.")
@@ -289,7 +288,7 @@ plotDataFromActivity <- function(matrices_list, tf,
     pos_ind <-  grep(paste(positive_elements_label, collapse = "|", sep =""), labels)
     neg_ind <-  grep(paste(negative_elements_label, collapse = "|", sep =""), labels)
     plot_data <- data.frame()
-    matrices_list <- c(matrices_list, list("Gene expression" = assay(GeneExpressionMatrix, "normalizedCounts")[tf,,drop=FALSE]))
+    matrices_list <- c(matrices_list, list("Gene expression" = assay(GeneExpressionMatrix, "normalizedCounts")[as.character(tf),,drop=FALSE]))
     colnames(matrices_list[[length(matrices_list)]]) <- colnames(GeneExpressionMatrix)
     for(i in seq_along(matrices_list))
     {
@@ -304,7 +303,14 @@ plotDataFromActivity <- function(matrices_list, tf,
         plot_data <- rbind(plot_data, partial_data)
     }
     plot_data$package <- factor(plot_data$package, levels = c("Epiregulon", setdiff(sort(unique(plot_data$package)), "Epiregulon")))
-    colors <- colors[levels(plot_data$package)]
+    packages <- levels(plot_data$package)
+    colors <- colors[packages]
+    AUC_data <- plot_data %>% group_by(package) %>%
+        group_map(function(x,y) cbind(y, data.frame(AUC = calculate_AUC(x$FPR, x$TPR))))
+    AUC_data <- do.call(rbind, AUC_data)
+    AUC_data$x <- 0.85
+    AUC_data$y <- seq(0.5, 0.55-(nrow(AUC_data)*0.05), by =-0.05)
+    AUC_data$AUC <- format(round(AUC_data$AUC,3), nsmall=3)
     library(ggplot2)
     ggp <- ggplot(data = plot_data, aes(x= FPR, y=TPR, color = package))+
         geom_line()+
@@ -312,6 +318,8 @@ plotDataFromActivity <- function(matrices_list, tf,
         scale_color_manual(values = colors)+
         theme(panel.border = element_rect(color = "black", fill = NA),
               panel.background = element_rect(fill = "white", colour="white"),
-              plot.title = element_text(hjust = 0.5))
+              plot.title = element_text(hjust = 0.5))+
+        geom_text(aes(x=0.85, y=0.55), label="AUC:", col="black")+
+        geom_text(data=AUC_data, aes(x=x, y=y, label=AUC), col=colors, show.legend = FALSE)
     return(list(ggp,plot_data))
 }

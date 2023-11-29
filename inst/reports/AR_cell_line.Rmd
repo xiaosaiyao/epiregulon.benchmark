@@ -7,43 +7,21 @@ peakMatrix <- get(paste0("peakMatrix_", current_cell_line))
 GeneExpressionMatrix <- get(paste0("GeneExpressionMatrix_", current_cell_line))
 regulon <- get(paste0("pruned.regulon_", current_cell_line))
 
-group_combinations_1 <- expand.grid(current_cell_line, c("ARV110", "Enza"), "DMSO", "down", "AR")
-group_combinations_2 <- expand.grid(current_cell_line, c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
-group_combinations <- rbind(group_combinations_1, group_combinations_2)
-colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
+source(system.file("/scripts/weight_methods_plot.R", package = "epiregulon.benchmark"))
+plot_data_all$workflow <- factor(plot_data_all$workflow, levels = c("basic", "motif_score", "chip-seq", "motif_score+chip-seq"))
+plot_data_all$method <- factor(plot_data_all$method, levels = c("wilcoxon", "corr (tf, re)", "MI (tf, re)", "corr (tf)", "MI (tf)"))
+plot_data_all$workflow <- forcats::fct_recode(plot_data_all$workflow, "merged ChIP" = "basic", "merged ChIP + score" = "motif_score", "cell line matched ChIP-seq" = "chip-seq",  "cell line matched ChIP-seq + motif" = "motif_score+chip-seq")
 
-plot_data <- data.frame()
+plot_data_all$workflow <- forcats::fct_relevel(plot_data_all$workflow,
+                                               "merged ChIP",
+                                               "merged ChIP + score",
+                                               "cell line matched ChIP-seq",
+                                              "cell line matched ChIP-seq + motif")
 ```
-
-```{r plots, cache = TRUE, cache.lazy = FALSE, results = "hide", , message=FALSE, warning=FALSE}
-arg.list <- list()
-arg.list$peakMatrix = peakMatrix
-arg.list$peak_assay = "counts"
-arg.list$exp_assay = "normalizedCounts"
-weight_clusters <- as.list(c(corr = "Clusters_Combined", MI = "Clusters_Combined", lmfit = "Clusters_Combined", logFC = NULL, wilcoxon = NULL))
-activity_clusters <- c(corr = NA, MI = NA, lmfit = NA, logFC = NA, wilcoxon = NA)
-for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
-    arg.list$method = method
-    partial_data <- prepare_plot_data(regulon = regulon,
-                                      weight.args = arg.list,
-                                      group_combinations = group_combinations,
-                                      geneExprMatrix.sce = GeneExpressionMatrix,
-                                      weight_clusters = weight_clusters[[method]],
-                                      activity_clusters = activity_clusters[method],
-                                      motif_score = params$motif_score,
-                                      path_to_archR_project = params$path_to_ArchR_proj,
-                                      treatment_column = "TEST_ARTICLE")
-    plot_data <- rbind(plot_data, partial_data)
-}
-
-```
-
-```{r AUC, cache = TRUE, cache.lazy = FALSE}
-library(dplyr)
-library(ggplot2)
-
-ggplot(plot_data, aes(x=FPR, y=TPR))+
-    geom_line(aes(color = tf), linewidth = 0.2)+
+```{r fig.dim=c(16,5.5)}
+ggplot(plot_data_all[plot_data_all$tf=="AR",], aes(x=FPR, y=TPR))+
+    geom_line(aes(color = workflow), linewidth = 0.3)+
+    scale_color_manual(values=c("red", "darkblue", "purple", "cyan"))+
     facet_grid(treatment~method)+
     xlab("False positive rate")+
     ylab("True positive rate")+
@@ -53,18 +31,27 @@ ggplot(plot_data, aes(x=FPR, y=TPR))+
           plot.title = element_text(hjust = 0.5))
 
 if(params$save_results)
-    ggsave(file.path(save_path, "plots", "LNCaP_weight_methods.pdf"), width = 10, height = 5.5)
+    ggsave(file.path(save_path, "plots", paste0(current_cell_line, "_weight_methods_AR.pdf")), width = 16, height = 5.5)
 
-AUC_data <- plot_data %>% group_by(cell_line, treatment, method, tf) %>%
-    group_map(function(x,y) cbind(y, data.frame(AUC = calculate_AUC(x$FPR, x$TPR))))
 
-AUC_data <- do.call(rbind, AUC_data)
+ggplot(plot_data_all[plot_data_all$tf %in% c("SMARCA2", "SMARCA4"),], aes(x=FPR, y=TPR))+
+    geom_line(aes(color = workflow), linewidth = 0.3)+
+    scale_color_manual(values=c("red", "darkblue", "purple", "cyan"))+
+    facet_grid(tf~method)+
+    xlab("False positive rate")+
+    ylab("True positive rate")+
+    ggtitle("ROC curves for AR dataset, LNCaP cell line")+
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          panel.background = element_rect(fill = "white", colour="white"),
+          plot.title = element_text(hjust = 0.5))
 
+if(params$save_results)
+    ggsave(file.path(save_path, "plots", paste0(current_cell_line, "_weight_methods_SMARCA2_4.pdf")), width = 16, height = 5.5)
 print(AUC_data)
 
 if(params$save_results){
-    write.csv(AUC_data, file.path(save_path, "AUC_LNCaP_by_weight_method.csv"))
-    write.csv(plot_data, file.path(save_path, "plot_data_LNCaP_by_weight_method.csv"))
+    write.csv(AUC_data, file.path(save_path, paste0("AUC_", current_cell_line, "_by_weight_method.csv")))
+    write.csv(plot_data_all, file.path(save_path, paste0("plot_data_", current_cell_line, "_by_weight_method.csv")))
 }
 ```
 
@@ -82,6 +69,7 @@ if("Epiregulon" %in% benchmarked_packages) eval_package = TRUE
 ```
 
 ```{r cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+regulon <- get(paste0("pruned.regulon_", current_cell_line))
 regulon <- addWeights(regulon = regulon, expMatrix = GeneExpressionMatrix, peakMatrix = peakMatrix, exp_assay = "normalizedCounts", peak_assay = "counts", method = "wilcoxon", clusters = GeneExpressionMatrix$TEST_ARTICLE)
 
 if (params$motif_score){
@@ -104,15 +92,24 @@ eval_package = FALSE
 if("FigR" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r FigR, child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r child = system.file("reports/FigR_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
 ```
+
+```{r eval=eval_package}
+GRN_list[["FigR"]] <- FigR_GRN
+```
+
 
 ```{r echo = FALSE}
 eval_package = FALSE
 if("Pando" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r Pando, child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r child = system.file("reports/Pando_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```
+
+```{r eval=eval_package}
+GRN_list[["Pando"]] <- Seurat_obj
 ```
 
 ```{r echo = FALSE}
@@ -120,7 +117,12 @@ eval_package = FALSE
 if("cellOracle" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r cellOracle, child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r child = system.file("reports/cellOracle_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```
+
+```{r eval=eval_package}
+GRN_list[["cellOracle"]] <- links
+GRN_list[[louvain_clusters]] <- louvain_clusters
 ```
 
 ```{r echo = FALSE}
@@ -128,7 +130,11 @@ eval_package = FALSE
 if("GRaNIE" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r GRaNIE, child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r child = system.file("reports/GRaNIE_AR.Rmd", package = "epiregulon.benchmark"), cache=TRUE, cache.lazy=FALSE, eval=eval_package}
+```
+
+```{r eval=eval_package}
+GRN_list[["GRaNIE"]] <- GRN_connections.all 
 ```
 
 ```{r echo = FALSE}
@@ -139,58 +145,114 @@ if("scenicplus" %in% benchmarked_packages) eval_package = TRUE
 ```{r Scenic_plus, child = system.file("reports/Scenic_plus_AR.Rmd", package = "epiregulon.benchmark"), cache=FALSE, cache.lazy=FALSE, eval=eval_package}
 ```
 
-```{r cache = TRUE, cache.lazy=FALSE}
-GRN_list[["Pando"]] <- Seurat_obj 
-GRN_list[["cellOracle"]] <- links
-GRN_list[["FigR"]] <- FigR_GRN
-GRN_list[["GRaNIE"]] <- GRN_connections.all
-library(epiregulon)
-library(epiregulon.benchmark)
-GeneExpressionMatrix  <- get(paste0("GeneExpressionMatrix_", current_cell_line))
-louvain_clusters$barcode = gsub("(.*)(___)(.*)", paste0("\\3","#","\\1"), louvain_clusters$barcode)
-louvain_clusters$barcode <- gsub("\\.","-",louvain_clusters$barcode)
-SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- as.character(louvain_clusters$cluster[match(louvain_clusters$barcode, colnames(GeneExpressionMatrix))])
+```{r eval=eval_package}
+GRN_list[["scenic_plus"]] <- scenic_plus_res
+```
 
+```{r cache = TRUE, cache.lazy=FALSE, fig.dim=c(6,4)}
+GeneExpressionMatrix <- get(paste0("GeneExpressionMatrix_", current_cell_line))
+louvain_clusters <- GRN_list[[louvain_clusters]]
+# label cellOracle clusters by matching cell barcodes
+SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- as.character(louvain_clusters$cluster[louvain_clusters$barcode, colnames(GeneExpressionMatrix)])
 matrices_list <- list()
 if(length(assays(GeneExpressionMatrix))!= 1) stop("GeneExpressionMatrix should contain one assay")
 for(i in seq_along(GRN_list)){
     GRN <- GRN_list[[i]]
-    method <- names(GRN_list)[i]
     activity.matrix <- get_activity_matrix(GRN = GRN,
                                            method = method,
                                            geneExprMatrix.sce = GeneExpressionMatrix,
                                            tfs = c("AR", "SMARCA2", "SMARCA4"),
                                            exp_assay = names(assays(GeneExpressionMatrix))[1])
-  matrices_list[[i]] <- activity.matrix 
+    if(is.null(activity.matrix)) next
+    matrices_list[[length(matrices_list)+1]] <- activity.matrix
+    names(matrices_list)[length(matrices_list)] <- names(GRN_list)[i]
 }
-names(matrices_list) <- names(GRN_list)
-if(exists("scenic_plus_res"))
-    marices_list <- c(matrices_list, scenic_plus_res)
-```
 
-```{r}
+matrices_list <- c(matrices_list, GRN_list[["scenic_plus"]])
 
-```
+group_combinations_1 <- expand.grid(current_cell_line, c("ARV110", "Enza"), "DMSO", "down", "AR")
+group_combinations_2 <- expand.grid(current_cell_line, c("A9690"), "DMSO", "down", c("SMARCA2", "SMARCA4"))
+group_combinations <- rbind(group_combinations_1, group_combinations_2)
+colnames(group_combinations) <- c("cell_line", "experimental_treatment", "control_treatment", "effect_direction", "transcription_factor")
 
-```{r cache = FALSE, cache.lazy=FALSE}
-for(i in seq_len(nrow(group_combinations))){
-    drug_name <- c(ARV110 = "AR degrader", Enza = "Enzalutamide", A9690 = "A9690")[group_combinations[i,"experimental_treatment"]]
-    tf <- group_combinations[i,"transcription_factor"]
-    res<- plotDataFromActivity(matrices_list, tf=tf,
+res <- plotDataFromActivity(matrices_list, tf=as.character(group_combinations[1,"transcription_factor"]),
                      labels = GeneExpressionMatrix$TEST_ARTICLE,
-                     positive_elements_label=group_combinations[i,"control_treatment"],
-                     negative_elements_label=group_combinations[i,"experimental_treatment"],
+                     positive_elements_label=group_combinations[1,"control_treatment"],
+                     negative_elements_label=group_combinations[1,"experimental_treatment"],
                      GeneExpressionMatrix,
-                     experimental_treatment = group_combinations[i,"experimental_treatment"],
-                     title = sprintf("%s cells, %s treated, %s activity", current_cell_line, drug_name, tf))
-    plot(res[[1]])
-    if(params$save_results){
-        ggsave(file.path(save_path, "plots", paste0(tf, "_", current_cell_line, "_", group_combinations[i,"experimental_treatment"], "_by_package.pdf")), width = 6, height = 4)
-        write.csv(res[[2]], file.path(save_path, paste0(tf, "_", current_cell_line, "_", group_combinations[i,"experimental_treatment"], "_plot_data.csv")))
-    }
-}
-```
+                     experimental_treatment = group_combinations[1,"experimental_treatment"],
+                     title = "LNCaP cells, AR degrader treated, AR activity")
+plot(res[[1]])
 
+if(params$save_results)
+    ggsave(file.path(save_path, "plots", paste0("AR_",current_cell_line,"_ARV110_by_package.pdf")), width = 6, height = 4)
+
+res <- plotDataFromActivity(matrices_list, tf=as.character(group_combinations[2,"transcription_factor"]),
+                     labels = GeneExpressionMatrix$TEST_ARTICLE,
+                     positive_elements_label=group_combinations[2,"control_treatment"],
+                     negative_elements_label=group_combinations[2,"experimental_treatment"],
+                     GeneExpressionMatrix,
+                     experimental_treatment = group_combinations[2,"experimental_treatment"],
+                     title = "LNCaP cells, Enzalutamide treated, AR activity")
+plot(res[[1]])
+
+if(params$save_results)
+    ggsave(file.path(save_path, "plots", paste0("AR_",current_cell_line,"_Enza_by_package.pdf")), width = 6, height = 4)
+```
+```{r , fig.dim=c(4.5,4)}
+res <- c(Epiregulon = 0, Pando = 0, cellOracle = 0, FigR = 0, GRaNIE = 0)
+for(i in seq_along(GRN_list)){
+    current_package <- names(GRN_list)[i]
+    if(current_package == "Epiregulon")
+        res["Epiregulon"] <- length(unique(GRN_list$Epiregulon$tf))
+    else if(current_package == "Pando")
+        res["Pando"] <- length(unique(GRN_list$Pando@grn@networks$glm_network@coefs$tf))
+    else if(current_package == "FigR")
+        res["FigR"] <- length(unique(GRN_list$FigR$Motif))
+    else if(current_package == "GRaNIE")
+        res["GRaNIE"] <- length(unique(GRN_list$GRaNIE$TF.name))
+    else if(current_package == "cellOracle")
+        res["cellOracle"] <- length(unique(GRN_list$cellOracle$source))
+}
+
+for(score.matrix.name in c("scenic_plus_pos_gene", "scenic_plus_neg_gene",
+                           "scenic_plus_pos_region", "scenic_plus_neg_region")){
+    res[score.matrix.name] <- nrow(matrices_list[[score.matrix.name]])
+}
+
+res <- data.frame(n_tf = res, package = names(res))
+
+res <- res[res$n_tf>0,]
+
+colors <- c(Epiregulon = "red", FigR = "black", Pando = "blue", GRaNIE = "green1",
+            cellOracle = "purple", scenic_plus_neg_gene = "grey", scenic_plus_pos_gene = "orange",
+            scenic_plus_pos_region = "green4", scenic_plus_neg_region = "tan4",
+            "Gene expression" = "darkslategray2")
+
+colors <- colors[unique(res$package)]
+full_labels <- c("Epiregulon" = "Epiregulon", "Pando" = "Pando", "cellOracle" = "cellOracle", "FigR" = "FigR", "GRaNIE" = "GRaNIE",
+  "scenic_plus_pos_gene" = "scenicplus\ngene-based\npositive",
+  "scenic_plus_neg_gene" = "scenicplus\ngene-baned\nnegative",
+  "scenic_plus_pos_region" = "scenicplus\nregion-based\npositive",
+  "scenic_plus_neg_region" = "scenicplus\nregion-baned\nnegative")
+ggplot(res, aes(y = n_tf, x = package, fill = package))+
+    geom_bar(stat = "identity", width = 0.6)+
+    scale_color_manual(values = colors)+
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size =11, lineheight = 0.8, family = "sans"),
+          panel.grid.major.y = element_line(colour = "white", linewidth =0.25),
+          panel.grid.minor.y = element_line(colour = "white", linewidth =0.1),
+          panel.grid.major.x = element_blank(),
+          panel.background = element_rect(fill = "white", colour="black"),
+          plot.title = element_text(hjust = 0.5, size = 13, family = "sans"),
+          legend.position = "none")+
+    ylab("Number of transcription factors found")+
+    xlab("Package")+
+    ggtitle("The number of transcription factors found\nwith the use of different GRN inference tools")+
+    scale_x_discrete(labels=full_labels)
+
+if(params$save_results)
+    ggsave(file.path(save_path, "plots", paste0("TF_numbers_",current_cell_line,".pdf")), width = 4.5, height = 4)
+```
 
 ```{r}
 print(sessionInfo())
