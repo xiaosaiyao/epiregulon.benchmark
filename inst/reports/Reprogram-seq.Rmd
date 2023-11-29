@@ -17,6 +17,9 @@ params:
     save_path: ""
     packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
     save_results: TRUE
+    path_to_archR_project: ""
+    motif_db_dir: ""
+    
 ---
 
 ```{r setup, include=TRUE, cache = TRUE, cache.lazy=FALSE}
@@ -39,6 +42,7 @@ presented in the form of curves showing the relation between false and true posi
 ```
 
 ```{r echo=FALSE}
+treatments <- eval(parse(text = enquote(params$treatments)))
 benchmarked_packages <- eval(parse(text = enquote(params$packages)))
 save_path <- params$save_path
 if(params$save_results && save_path == ""){
@@ -77,7 +81,9 @@ arg.list <- list()
 arg.list$peakMatrix = PeakMatrix
 arg.list$peak_assay = "counts"
 arg.list$tf_re.merge = TRUE
+arg.list$exp_assay = "normalizedCounts"
 weight_clusters  <- as.list(setNames(rep(params$cluster_column, 3), c("corr", "MI", "lmfit")))
+save.image(".RData")
 for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
     arg.list$method = method
     partial_data <- prepare_plot_data(regulon = regulon,
@@ -92,7 +98,7 @@ for (method in  c("corr", "MI", "lmfit","logFC","wilcoxon")){
 
 ```
 
-```{r weight_plots cache = TRUE, cache.lazy=FALSE}
+```{r weight_plots, cache = TRUE, cache.lazy=FALSE}
 library(dplyr)
 library(ggplot2)
 
@@ -139,7 +145,7 @@ if("Epiregulon" %in% benchmarked_packages) eval_package = TRUE
 ```{r cache = TRUE, cache.lazy=FALSE, eval=eval_package}
 weight.args <- list(clusters = as.vector(GeneExpressionMatrix[[params$cluster_column]]), regulon = regulon,
                     expMatrix = GeneExpressionMatrix, peakMatrix = PeakMatrix, peak_assay = "counts",
-                    method = "corr", tf_re.merge = TRUE)
+                    method = "corr", tf_re.merge = TRUE, exp_assay = "normalizedCounts")
 # epiregulon workflow
 regulon.w <- do.call(addWeights, weight.args)
 GRN_list[["Epiregulon"]] <- regulon.w
@@ -152,7 +158,7 @@ eval_package = FALSE
 if("Pando" %in% benchmarked_packages) eval_package = TRUE
 ```
 
-```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE, eval=eval_package}
+```{r child = system.file("reports/Pando_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = FALSE, cache.lazy=FALSE, eval=eval_package}
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE}
@@ -216,7 +222,8 @@ for(i in seq_along(GRN_list)){
     activity.matrix <- get_activity_matrix(GRN = GRN,
                                            method = method,
                                            geneExprMatrix.sce = GeneExpressionMatrix,
-                                           tfs = c("GATA6", "NKX2-1", "FOXA2"))
+                                           tfs = c("GATA6", "NKX2-1", "FOXA2"),
+                                           exp_assay = "normalizedCoutns")
   matrices_list[[i]] <- activity.matrix 
 }
 
@@ -228,16 +235,17 @@ if(exists("scenic_plus_res"))
 ```{r cache = FALSE, cache.lazy=FALSE, message=FALSE}
 for(i in seq_len(nrow(group_combinations))){
     tf <- group_combinations[i,"transcription_factor"]
-    plot_data <- plotDataFromActivity(matrices_list, tf=tf,
+    res <- plotDataFromActivity(matrices_list, tf=tf,
                      labels = GeneExpressionMatrix$hash_assignment,
                      positive_elements_label=group_combinations[i,"experimental_treatment"],
                      negative_elements_label=group_combinations[i,"control_treatment"],
                      GeneExpressionMatrix,
                      experimental_treatment = group_combinations[i,"experimental_treatment"],
                      title = sprintf("Reprogram-seq, induced %s overexpression\n%s activity", tf, tf))
+    plot(res[[1]])
     if(params$save_results){
         ggsave(file.path(save_path, "plots", paste0("Reprogram-seq_by_package_", tf, ".pdf")), width = 6, height = 4)
-        write.csv(plot_data, file.path(save_path, paste0("Reprogram-seq_", tf, "_plot_data.csv")))
+        write.csv(res[[2]], file.path(save_path, paste0("Reprogram-seq_", tf, "_plot_data.csv")))
     }
 }
 ```

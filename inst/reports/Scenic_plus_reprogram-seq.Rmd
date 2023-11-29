@@ -12,7 +12,13 @@ path_to_peak_matrix <- file.path(params$work_dir, "peak_matrix.tsv")
 write.table(assay(peakMatrix), file = path_to_peak_matrix,
                 col.names = TRUE, row.names = TRUE, sep = "\t")
 
-cistopic_obj <- find_topics(adata, barcode_tab, sample_names = barcode_tab$sample_id[1], params$data_file_paths, params$work_dir, params$temp_dir, path_to_peak_matrix = as.list(path_to_peak_matrix), params$n_cpu, params$group_variable, "reprogram", 2000)
+cistopic_obj <- find_topics(barcode_tab=barcode_tab, sample_names=list(barcode_tab$sample_id[1]), paths_to_fragments=as.list(params$data_file_paths), work_dir=params$work_dir, 
+                            tmp_dir=params$temp_dir, paths_to_peak_matrix = as.list(path_to_peak_matrix),
+                            n_cpu=params$n_cpu, group_variable=params$group_variable,
+                            save_results=params$save_results, 
+                            file_name="scenicplus_reprogram_", save_path=params$save_path,
+                            motif_db_dir=params$motif_db_dir, dataset="reprogram", n_top_genes=2000)
+
 
 eRegulons <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, "scenicplus_reprogram_", save_path)
 

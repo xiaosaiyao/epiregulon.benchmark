@@ -19,6 +19,7 @@ params:
     save_path: ""
     path_to_ArchR_proj: ""
     group_variable: "TEST_ARTICLE"
+    motif_db_dir: ""
 ---
 
 ```{r setup, include=TRUE}

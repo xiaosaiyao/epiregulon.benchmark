@@ -13,14 +13,7 @@ import anndata as ad
 
 def find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
 paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
-dataset, n_top_genes=2000):
-    import pickle
-    f = open("/gstore/scratch/u/wlodarct/temp.pkl", "wb")
-    l1 = [barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
-paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
-dataset, n_top_genes]
-    pickle.dump(l1, f)
-    f.close()
+motif_db_dir, dataset, n_top_genes=2000):
     # set directory with data
     adata_list = list(map(lambda x: sc.read_10x_h5(os.path.join(x, "filtered_feature_bc_matrix.h5")), paths_to_fragments))
     for i in range(len(sample_names)):
@@ -35,12 +28,8 @@ dataset, n_top_genes]
         adata_list[i].var_names_make_unique()
     adatas = dict(zip(sample_names, adata_list))
     adata = ad.concat(adatas, label = "dataset")
-    
-    
-    scRNA_bc = adata.obs_names
     cell_data = adata.obs
     cell_data[group_variable] = cell_data[group_variable].astype(str) # set data type of the celltype column to str, otherwise the export_pseudobulk function will complain.
-    #cell_data.index = list(map(lambda x: x[0]+"___"+x[1], zip(cell_data.index, cell_data['sample_id'])))
     fragments_dict = dict(zip(sample_names, paths_to_fragments))
     matrices_dict = dict(zip(sample_names, paths_to_peak_matrix))
     cistopic_obj_list = [create_cistopic_object_from_matrix_file(fragment_matrix_file = matrices_dict[key],
@@ -48,8 +37,10 @@ dataset, n_top_genes]
                                                       project = key) for key in fragments_dict.keys()]
     cistopic_obj = merge(cistopic_obj_list)
     cistopic_obj.add_cell_data(cell_data)
+    ray.init()
+    ray.shutdown()
     # number of topics selected from 2,4,8,15,20,25,32,38,48
-    selected_topic_n = {'reprogam' : [20], 'VCaP' : [20], 'LNCaP' : [25]}
+    selected_topic_n = {'reprogram' : [20], 'VCaP' : [20], 'LNCaP' : [25]}
     models=run_cgs_models(cistopic_obj,
                 n_topics=selected_topic_n[dataset],
                 n_cpu=n_cpu,
@@ -92,9 +83,9 @@ dataset, n_top_genes]
         regions = markers_dict[DAR].index[markers_dict[DAR].index.str.startswith('chr')] #only keep regions on known chromosomes
         region_sets['DARs'][DAR] = pr.PyRanges(region_names_to_coordinates(regions))
     # use databased downloaded from https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/
-    rankings_db = '/gstore/scratch/u/wlodarct/GREDXFER-4710/hg38_screen_v10_clust.regions_vs_motifs.rankings.feather'
-    scores_db = '/gstore/scratch/u/wlodarct/GREDXFER-4710/hg38_screen_v10_clust.regions_vs_motifs.scores.feather'
-    motif_annotation = '/gstore/scratch/u/wlodarct/GREDXFER-4710/motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl' #motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl
+    rankings_db = os.path.join(motif_db_dir, 'hg38_screen_v10_clust.regions_vs_motifs.rankings.feather')
+    scores_db = os.path.join(motif_db_dir, 'hg38_screen_v10_clust.regions_vs_motifs.scores.feather)'
+    motif_annotation = os.path.join(motif_db_dir, 'motifs-v10nr_clust-nr.hgnc-m0.001-o0.0.tbl')
     if not os.path.exists(os.path.join(work_dir, 'motifs')):
         os.makedirs(os.path.join(work_dir, 'motifs'))
     run_pycistarget(
