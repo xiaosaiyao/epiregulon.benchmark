@@ -100,10 +100,11 @@ barcode_tab[[params$group_variable]] <- colData(mae[["GeneExpressionMatrix"]])$h
 adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
                             sample_names = unique(barcode_tab$sample_id),
-                            python_library = "cellOracle",
                             variable = params$group_variable)
 res <- calculate_GRN(adata, base_GRN)
 if (params$save_results) saveRDS(res, file.path(save_path, "cellOracle_Reprogram.rds"))
 links <- res[[1]]
 louvain_clusters <- res[[2]]
+louvain_clusters$barcode <- gsub("(.*)(___)(.*)", paste0("\\3","#","\\1"), louvain_clusters$barcode)
+louvain_clusters$barcode <- gsub("\\.","-",louvain_clusters$barcode)
 ```

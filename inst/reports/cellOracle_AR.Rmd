@@ -102,10 +102,11 @@ adata <- get_annotated_data(barcode_tab,
                             paths_to_data_files = params$data_file_paths,
                             sample_names = sample_names,
                             n_top_genes=2000,
-                            python_library = "cellOracle",
                             variable = "TEST_ARTICLE")
 res <- calculate_GRN(adata, base_GRN)
 if (params$save_results) saveRDS(res, file.path(save_path, paste0("cellOracle_AR_",current_cell_line, ".rds")))
 links <- res[[1]]
 louvain_clusters <- res[[2]]
+louvain_clusters$barcode <- gsub("(.*)(___)(.*)", paste0("\\3","#","\\1"), louvain_clusters$barcode)
+louvain_clusters$barcode <- gsub("\\.","-",louvain_clusters$barcode)
 ```
