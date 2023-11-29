@@ -42,7 +42,7 @@ cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.se,
 
 # filter significant peak-gene associations
 
-cisCorr.filt <- cisCorr %>% filter(pvalZ <= 0.05)
+cisCorr.filt <- cisCorr %>% dplyr::filter(pvalZ <= 0.05)
 
 # with default setting for runPeakGenecorr there are only 8 dorcGenes left
 
@@ -72,4 +72,8 @@ FigR_GRN <- runFigRGRN(ATAC.se = peakMatrix.se,
                              dorcMat = dorcMat.s,
                              rnaMat = RNAmat.s,
                              nCores = params$n_cpu)
+
+
+if(params$save_results)
+    saveRDS(FigR_GRN, file.path(save_path, "FigR_reprogram.rds"))
 ```

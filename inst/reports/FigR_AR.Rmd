@@ -49,7 +49,7 @@ cisCorr <- runGenePeakcorr(ATAC.se = peakMatrix.sce,
 
 # filter siginificant peak-gene associations
 
-cisCorr.filt <- cisCorr %>% filter(pvalZ <= 0.05)
+cisCorr.filt <- cisCorr %>% dplyr::filter(pvalZ <= 0.05)
 
 dorcGenes <- dorcJPlot(dorcTab = cisCorr.filt,
                        cutoff =10,
