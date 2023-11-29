@@ -66,7 +66,7 @@ find_topics_2 <- function(barcode_tab, sample_names, paths_to_fragments, work_di
                         paths_to_peak_matrix, n_cpu, group_variable,
                         save_results, file_name, save_path,
                         dataset, n_top_genes){
-    venv3 <- BasiliskEnvironment(envname="scenic_plus_3",
+    venv3 <- BasiliskEnvironment(envname="scenic_plus_2",
                                  pkgname="epiregulon.benchmark",
                                  packages=c(""),
                                  channels = c(""),
@@ -95,22 +95,33 @@ find_topics_2 <- function(barcode_tab, sample_names, paths_to_fragments, work_di
 #' @export
 find_topics <- function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
                         paths_to_peak_matrix, n_cpu, group_variable,
-                        save_results, file_name, save_path,
+                        save_results, file_name, save_path, motif_db_dir,
                         dataset, n_top_genes){
     proc = basiliskStart(venv2)
     on.exit(basiliskStop(proc))
-    cistopic_obj <- basiliskRun(proc, function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                                               paths_to_peak_matrix, n_cpu, group_variable,
-                                               save_results, file_name, save_path,
-                                               dataset, n_top_genes){
-        reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
-        find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                    paths_to_peak_matrix, n_cpu, group_variable,
-                    save_results, file_name, save_path, dataset, n_top_genes)
-    }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
-    work_dir = work_dir, tmp_dir = tmp_dir,
-    paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
-    save_results = save_results, file_name = file_name, save_path = save_path, dataset = dataset,
-    n_top_genes=n_top_genes)
-    cistopic_obj
+    test <- try(
+        {cistopic_obj <- basiliskRun(proc, function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                                                   paths_to_peak_matrix, n_cpu, group_variable,
+                                                   save_results, file_name, save_path, motif_db_dir,
+                                                   dataset, n_top_genes){
+            reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+            find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                        paths_to_peak_matrix, n_cpu, group_variable,
+                        save_results, file_name, save_path, motif_db_dir, dataset, n_top_genes)
+        }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
+        work_dir = work_dir, tmp_dir = tmp_dir,
+        paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
+        save_results = save_results, file_name = file_name, save_path = save_path, motif_db_dir=motif_db_dir,
+        dataset = dataset, n_top_genes=n_top_genes)})
+    if(is(test, "try-error")){
+        msg <- attr(test, "condition")$message
+        if((grepl("ImportError:.*version.*LIB.*not found", msg)) {
+            setBasiliskForceFallback(TRUE)
+            find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+                        paths_to_peak_matrix, n_cpu, group_variable,
+                        save_results, file_name, save_path, motif_db_dir,
+                        dataset, n_top_genes)
+        }
+    }
+    )
 }
