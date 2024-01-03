@@ -15,10 +15,11 @@ Imports:
     BiocParallel,
     basilisk,
     SingleCellExperiment,
-    scran
+    scran,
+    rtracklayer
 Depends:
     R (>= 2.10),
-    epiregulon,
+    epiregulon.archr,
 Suggests:
     GenomicRanges,
     ArchR,
@@ -26,6 +27,8 @@ Suggests:
     BSgenome.Hsapiens.UCSC.hg38,
     dplyr,
     ggplot2,
+    ggpubr,
+    rstatx,
     ape,
     scMultiome,
     purrr,
