@@ -18,6 +18,7 @@ defaults are set to Rosalind file location.
 - `temp_dir`: path to the folder in which intermediates from the `scenicplus` analysis will be saved
 - `work_dir`: path to the folder into which intermediate files from `scenicplus` analysis will be saved
 - `n_cpu`: number of cores for parallel jobs
+- `save_results`: a logical indicating whether intermediate objects created during analyses should be saved for later use
 - `save_path`: path to which result of the benchmark will be saved, including plots
 
 To run the benchmark for the **AR dataset** use the function `render_report_AR`. Provide the
@@ -27,6 +28,7 @@ following parameters:
 - `temp_dir`: path to the folder in which intermediates from the `scenicplus` analysis will be saved
 - `work_dir`: path to the folder into which intermediate files from `scenicplus` analysis will be saved
 - `n_cpu`: number of cores for parallel jobs
+- `save_results`: a logical indicating whether intermediate objects created during analyses should be saved for later use
 - `save_path`: path to which result of the benchmark will be saved, including plots
 
 # To do:
@@ -35,3 +37,4 @@ following parameters:
 - remove vignettes from .Rbuildignore
 - use atacseq_counts instead of atacseq_data
 - making gene names unique after concatenation of adata objects
+- path to cell-line specific chip-seq as a param to rmarkdown::render
