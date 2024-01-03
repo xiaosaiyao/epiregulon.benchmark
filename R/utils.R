@@ -1,6 +1,7 @@
 #' @export
 calculate_AUC <- function(x,y){
     y <- y[order(x)]
+    if(any(diff(y)<0)) stop("y should be non-decreasing function of x")
     x <- x[order(x)]
     non_unique_x_ind <- which(duplicated(x))
     non_unique_x_ind <- sort(unique(c(non_unique_x_ind, non_unique_x_ind-1)))
@@ -46,6 +47,7 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
                               activity_clusters=NULL,
                               use_cell_line_weights = TRUE, group_column = "Cellline",
                               treatment_column = "hash_assignment",
+                              old_idxATAC=NULL,
                               ...){
     weight.args$regulon <- regulon
     weight.args$expMatrix <- geneExprMatrix.sce
@@ -64,10 +66,16 @@ prepare_plot_data <- function(regulon, weight.args, group_combinations, geneExpr
 
         }
         else{
+            if(!is.null(old_idxATAC)){
+                regulon.w$idxATAC <- old_idxATAC[regulon.w$idxATAC]
+            }
             regulon.w <- addMotifScore(regulon.w,
                                        species="human",
                                        genome="hg38",
                                        archr_path = archr_path)
+            if(!is.null(old_idxATAC)){
+                regulon.w$idxATAC <- match(regulon.w$idxATAC, old_idxATAC)
+            }
         }
         # adjust action to whether weight is a matrix or vector
         if(is.null(dim(regulon.w$weight)))
@@ -125,7 +133,7 @@ get_activity_matrix <- function(method = NULL,
                                 GRN = NULL,
                                 tfs = NULL,
                                 geneExprMatrix.sce = NULL,
-                                exp_assay = "logcounts"){
+                                exp_assay = "normalizedCounts"){
     if(!method %in% c("FigR", "Epiregulon", "cellOracle", "Pando","GRaNIE")) return(NULL)
     library(epiregulon)
     if(method == "FigR"){
@@ -245,6 +253,10 @@ getResultsFromActivity <- function(activity.matrix, add_plot=FALSE, tf,
     if(length(negative_elements_label) > 1)
         negative_elements_label <- paste(negative_elements_label, collapse = "|", sep ="")
     positive_elements_ind <- grep(positive_elements_label, labels)
+    if(length(positive_elements_ind)==0) stop("No positive observations.")
+    if(any(is.na(positive_elements_ind))) stop("NA values in positive observations.")
+    if(length(negative_elements_ind)==0) stop("No negative observations.")
+    if(any(is.na(negative_elements_ind))) stop("NA values in negative observations.")
     negative_elements_ind <- grep(negative_elements_label, labels)
     activity_values <- activity.matrix[as.character(tf), ]
     res <- calculate_accuracy_metrics(activity_values, positive_elements_ind,
@@ -294,6 +306,7 @@ plotDataFromActivity <- function(matrices_list, tf,
     {
         if(nrow(matrices_list[[i]])==0) next
         if(!tf %in% rownames(matrices_list[[i]])) next
+        if(!all(colnames(matrices_list[[i]]) %in% colnames(GeneExpressionMatrix))) stop("Cell names of activity matrix and GeneExpressionMatrix do not match")
         activity_values <- matrices_list[[i]][as.character(tf),colnames(GeneExpressionMatrix)]
         res <- calculate_accuracy_metrics(activity_values, pos_ind, neg_ind)
         partial_data <- data.frame(FPR = res$FPR, TPR = res$TPR)
