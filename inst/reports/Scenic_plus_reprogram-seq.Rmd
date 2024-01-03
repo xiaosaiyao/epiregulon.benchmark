@@ -19,8 +19,10 @@ cistopic_obj <- find_topics(barcode_tab=barcode_tab, sample_names=list(barcode_t
                             file_name="scenicplus_reprogram_", save_path=params$save_path,
                             motif_db_dir=params$motif_db_dir, dataset="reprogram", n_top_genes=2000)
 
-
-eRegulons <- run_scenicplus_analysis(params$work_dir, adata, cistopic_obj, params$n_cpu, params$group_variable, params$save_results, "scenicplus_reprogram_", save_path)
+eRegulons  <- run_scenicplus(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir=params$work_dir, params$temp_dir,
+                             as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results,
+                             file_name="cistopic_obj_reprogram.pkl", save_path, params$motif_db_dir, dataset = "reprogram", 2000,
+                             scenicplus_res_file="scenicplus_reprogram_")
 
 gene_based <- eRegulons[[1]]
 region_based <- eRegulons[[2]]

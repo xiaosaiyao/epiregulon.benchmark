@@ -32,9 +32,7 @@ reticulate::use_condaenv(condaenv = params$path_to_conda_env, conda = params$pat
 
 reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
 
-obj_list <- find_topics(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path, params$motif_db_dir, dataset = current_cell_line, 2000)
-
-eRegulons <- run_scenicplus(work_dir, obj_list[[2]], obj_list[[1]], params$n_cpu, params$group_variable, params$save_results, paste0("scenicplus_AR_", current_cell_line), save_path)
+eRegulons  <- run_scenicplus(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path, params$motif_db_dir, dataset = current_cell_line, 2000, scenicplus_res_file=paste0("scenicplus_AR_", current_cell_line))
 
 gene_based <- eRegulons[[1]]
 region_based <- eRegulons[[2]]

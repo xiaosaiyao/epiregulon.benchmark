@@ -41,55 +41,68 @@ calculate_GRN <- function(adata, base_GRN){
     cellorcacle_GRN
 }
 
-#' @export
-run_scenicplus <- function(work_dir, adata, cistopic_obj, n_cpu, group_variable,
-                           save_results, res_file, save_path){
-    venv2 <- BasiliskEnvironment(envname="scenic_plus",
-                                 pkgname="epiregulon.benchmark",
-                                 packages=c(""),
-                                 channels = c(""),
-                                 pip=c(""))
-    proc = basiliskStart(venv2)
-    on.exit(basiliskStop(proc))
-    scenicplus_res <- basiliskRun(proc, function(geneExpr, GRN){
-        reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
-        run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable,
-                                save_results, res_file, save_path)
-    }, work_dir = work_dir, adata = adata, cistopic_obj = cistopic_obj,
-    n_cpu = n_cpu, group_variable = group_variable, save_results = save_results,
-    res_file = res_file, save_path = save_path)
-    scenicplus_res
+find_topics <- function(proc, barcode_tab, sample_names,
+                        paths_to_fragments, work_dir,
+                        tmp_dir, paths_to_peak_matrix, n_cpu,
+                        group_variable,
+                        save_results, file_name, save_path,
+                        motif_db_dir, dataset, n_top_genes){
+    obj_list <- basiliskRun(proc, function(barcode_tab, sample_names,
+                               paths_to_fragments, work_dir,
+                               tmp_dir, paths_to_peak_matrix, n_cpu,
+                               group_variable,
+                               save_results, file_name, save_path,
+                               motif_db_dir, dataset, n_top_genes){
+        reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
+        find_topics_python(barcode_tab, sample_names,
+                    paths_to_fragments, work_dir,
+                    tmp_dir, paths_to_peak_matrix, n_cpu,
+                    group_variable,
+                    save_results, file_name, save_path,
+                    motif_db_dir, dataset, n_top_genes)
+    }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
+    work_dir = work_dir, tmp_dir = tmp_dir,
+    paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
+    save_results = save_results, file_name = file_name, save_path = save_path, motif_db_dir=motif_db_dir,
+    dataset = dataset, n_top_genes=n_top_genes)
+    obj_list
 }
 
 #' @export
-find_topics <- function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                        paths_to_peak_matrix, n_cpu, group_variable,
-                        save_results, file_name, save_path, motif_db_dir,
-                        dataset, n_top_genes){
+run_scenicplus <- function(barcode_tab, sample_names, paths_to_fragments, work_dir,
+                           tmp_dir, paths_to_peak_matrix, n_cpu, group_variable,
+                           save_results, file_name, save_path, motif_db_dir,
+                           dataset, n_top_genes, scenicplus_res_file){
     proc = basiliskStart(venv2)
     on.exit(basiliskStop(proc))
     test <- try(
-        {cistopic_obj <- basiliskRun(proc, function(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                                                   paths_to_peak_matrix, n_cpu, group_variable,
-                                                   save_results, file_name, save_path, motif_db_dir,
-                                                   dataset, n_top_genes){
-            reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
-            find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
-                        paths_to_peak_matrix, n_cpu, group_variable,
-                        save_results, file_name, save_path, motif_db_dir, dataset, n_top_genes)
-        }, barcode_tab=barcode_tab, sample_names = sample_names, paths_to_fragments = paths_to_fragments,
-        work_dir = work_dir, tmp_dir = tmp_dir,
-        paths_to_peak_matrix = paths_to_peak_matrix, n_cpu = n_cpu, group_variable = group_variable,
-        save_results = save_results, file_name = file_name, save_path = save_path, motif_db_dir=motif_db_dir,
-        dataset = dataset, n_top_genes=n_top_genes)})
+        {obj_list <- find_topics(proc=proc, barcode_tab=barcode_tab, sample_names=sample_names,
+                                 paths_to_fragments=paths_to_fragments, work_dir=work_dir,
+                                 tmp_dir=tmp_dir,
+                                 paths_to_peak_matrix=paths_to_peak_matrix, n_cpu=n_cpu,
+                                 group_variable=group_variable,
+                                 save_results=save_results, file_name=file_name, save_path=save_path,
+                                 motif_db_dir=motif_db_dir,
+                                 dataset=dataset, n_top_genes=n_top_genes)})
     if(is(test, "try-error")){
         msg <- attr(test, "condition")$message
         if(grepl("ImportError:.*version.*LIB.*not found", msg)) {
             setBasiliskForceFallback(TRUE)
-            find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
+            obj_list<-find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir,
                         paths_to_peak_matrix, n_cpu, group_variable,
                         save_results, file_name, save_path, motif_db_dir,
                         dataset, n_top_genes)
         }
     }
+    scenicplus_res <- basiliskRun(proc, function(work_dir, adata,
+                                                 cistopic_obj, n_cpu,
+                                                 group_variable, save_results,
+                                                 res_file, save_path){
+        reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
+        run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable,
+                                save_results, scenicplus_res_file, save_path)
+    }, work_dir = work_dir, adata = obj_list[[2]], cistopic_obj = obj_list[[1]],
+    n_cpu = n_cpu, group_variable = group_variable, save_results = save_results,
+    res_file = res_file, scenicplus_res_file=scenicplus_res_file, save_path = save_path)
+    scenicplus_res
 }
