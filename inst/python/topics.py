@@ -11,7 +11,7 @@ from scenicplus.wrappers.run_pycistarget import run_pycistarget
 import scanpy as sc 
 import anndata as ad
 
-def find_topics(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
+def find_topics_python(barcode_tab, sample_names, paths_to_fragments, work_dir, tmp_dir, 
 paths_to_peak_matrix, n_cpu, group_variable, save_results, file_name, save_path,
 motif_db_dir, dataset, n_top_genes=2000):
     # set directory with data
