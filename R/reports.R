@@ -13,7 +13,11 @@
 #' @export
 render_report_reprogram_seq <- function(output_file="Reprogram-seq_benchmark.html",
                                         data_file_paths="/gne/data/lab-shares/xie-lab/Sequencing_Data/2022/mapping/20220124_ReprogramSeq_Multiome/JT65_67/outs/",
-                                        motif_db_dir = find.package("epiregulon.benchmark"),...){
+                                        motif_db_dir = find.package("epiregulon.benchmark"),
+                                        save_results=TRUE,
+                                        save_path=NULL,
+                                        ...){
+    if(save_results && missing(save_path)) stop("Path to folder into which results will be saved should be speciefied")
     rmarkdown::render(system.file("reports/Reprogram-seq.Rmd", package = "epiregulon.benchmark"), output_format="all", output_file=output_file,
                       params=c(list(data_file_paths = data_file_paths, motif_db_dir=motif_db_dir), list(...)))
 }
@@ -23,7 +27,11 @@ render_report_reprogram_seq <- function(output_file="Reprogram-seq_benchmark.htm
 render_report_AR <- function(output_file="AR.html", path_to_ArchR_proj,
                              data_file_paths = c("/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418230/croo_output/",
                                                  "/gstore/data/genomics/congee_rest_runs/62e2c81cd6d7e0bd49c579dd/SAM24418231/croo_output/"),
-                             motif_db_dir = find.package("epiregulon.benchmark"),...){
+                             motif_db_dir = find.package("epiregulon.benchmark"),
+                             save_results=TRUE,
+                             save_path=NULL,
+                             ...){
+    if(save_results && missing(save_path)) stop("Path to folder into which results will be saved should be speciefied")
     rmarkdown::render(system.file("reports/AR.Rmd", package="epiregulon.benchmark"), output_format="all", output_file=output_file,
                       params=c(list(data_file_paths = data_file_paths, path_to_ArchR_proj=path_to_ArchR_proj,
                                     motif_db_dir=motif_db_dir), list(...)))
