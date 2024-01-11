@@ -12,15 +12,11 @@ path_to_peak_matrix <- file.path(params$work_dir, "peak_matrix.tsv")
 write.table(assay(peakMatrix), file = path_to_peak_matrix,
                 col.names = TRUE, row.names = TRUE, sep = "\t")
 
-cistopic_obj <- find_topics(barcode_tab=barcode_tab, sample_names=list(barcode_tab$sample_id[1]), paths_to_fragments=as.list(params$data_file_paths), work_dir=params$work_dir, 
-                            tmp_dir=params$temp_dir, paths_to_peak_matrix = as.list(path_to_peak_matrix),
-                            n_cpu=params$n_cpu, group_variable=params$group_variable,
-                            save_results=params$save_results, 
-                            file_name="scenicplus_reprogram_", save_path=params$save_path,
-                            motif_db_dir=params$motif_db_dir, dataset="reprogram", n_top_genes=2000)
+work_dir <- file.path(params$work_dir, current_cell_line)
+if(!dir.exists(work_dir)) dir.create(work_dir)
 
-eRegulons  <- run_scenicplus(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir=params$work_dir, params$temp_dir,
-                             as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results,
+eRegulons  <- run_scenicplus(barcode_tab=barcode_tab, sample_names=as.list(sample_names), paths_to_fragments=as.list(params$data_file_paths), work_dir=params$work_dir, tmp_dir=params$temp_dir,
+                             paths_to_peak_matrix=as.list(paths_to_matrices), n_cpu=params$n_cpu, group_variable=params$group_variable, save_results=params$save_results,
                              file_name="cistopic_obj_reprogram.pkl", save_path, params$motif_db_dir, dataset = "reprogram", 2000,
                              scenicplus_res_file="scenicplus_reprogram_")
 

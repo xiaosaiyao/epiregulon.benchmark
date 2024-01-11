@@ -28,10 +28,6 @@ cistopic_file <- paste0("cistopic_obj_", current_cell_line, ".pkl")
 work_dir <- file.path(params$work_dir, current_cell_line)
 if(!dir.exists(work_dir)) dir.create(work_dir)
 
-reticulate::use_condaenv(condaenv = params$path_to_conda_env, conda = params$path_to_conda_bin)
-
-reticulate::source_python(system.file("python/topics.py", package = "epiregulon.benchmark"))
-
 eRegulons  <- run_scenicplus(barcode_tab, as.list(sample_names), as.list(params$data_file_paths), work_dir, params$temp_dir, as.list(paths_to_matrices), params$n_cpu, params$group_variable, params$save_results, cistopic_file, save_path, params$motif_db_dir, dataset = current_cell_line, 2000, scenicplus_res_file=paste0("scenicplus_AR_", current_cell_line))
 
 gene_based <- eRegulons[[1]]
