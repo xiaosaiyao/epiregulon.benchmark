@@ -1,5 +1,2 @@
 #!/bin/sh
-cd inst
-git clone https://github.com/aertslab/scenicplus
-cd ..
 ${R_HOME}/bin/Rscript -e "basilisk::configureBasiliskEnv()"
