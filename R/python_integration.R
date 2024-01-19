@@ -94,15 +94,15 @@ run_scenicplus <- function(barcode_tab, sample_names, paths_to_fragments, work_d
                         dataset, n_top_genes)
         }
     }
-    scenicplus_res <- basiliskRun(proc, function(work_dir, adata,
+    scenicplus_res <- basiliskRun(proc, function(work_dir,
                                                  cistopic_obj, n_cpu,
                                                  group_variable, save_results,
                                                  res_file, save_path){
         reticulate::source_python(system.file("python/scenicplus_main.py", package = "epiregulon.benchmark"))
         run_scenicplus_analysis(work_dir, adata, cistopic_obj, n_cpu, group_variable,
-                                save_results, scenicplus_res_file, save_path)
+                                save_results, res_file, save_path)
     }, work_dir = work_dir, adata = obj_list[[2]], cistopic_obj = obj_list[[1]],
     n_cpu = n_cpu, group_variable = group_variable, save_results = save_results,
-    res_file = res_file, scenicplus_res_file=scenicplus_res_file, save_path = save_path)
+    res_file = res_file, save_path = save_path)
     scenicplus_res
 }
