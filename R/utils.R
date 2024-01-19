@@ -1,11 +1,11 @@
 #' @export
 calculate_AUC <- function(x,y){
     y <- y[order(x)]
-    if(any(diff(y)<0)) stop("y should be non-decreasing function of x")
     x <- x[order(x)]
     non_unique_x_ind <- which(duplicated(x))
     non_unique_x_ind <- sort(unique(c(non_unique_x_ind, non_unique_x_ind-1)))
     y[non_unique_x_ind] <- sort(y[non_unique_x_ind])
+    if(any(diff(y)<0)) stop("y should be non-decreasing function of x")
     x_intervals <- diff(x)
     pair_mean_y <- (y[1:(length(y)-1)] + y[2:length(y)])/2
     sum(x_intervals*pair_mean_y)
