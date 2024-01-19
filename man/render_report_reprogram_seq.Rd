@@ -2,19 +2,24 @@
 % Please edit documentation in R/reports.R
 \name{render_report_reprogram_seq}
 \alias{render_report_reprogram_seq}
+\alias{render_report_simulation}
 \title{Generate the report with the use of reprogram-seq data}
 \usage{
 render_report_reprogram_seq(
-  output_file = file.path(getwd(), "Reprogram-seq_benchmark.html"),
+  output_file = "Reprogram-seq_benchmark.html",
+  data_file_paths =
+    "/gne/data/lab-shares/xie-lab/Sequencing_Data/2022/mapping/20220124_ReprogramSeq_Multiome/JT65_67/outs/",
+  motif_db_dir = find.package("epiregulon.benchmark"),
+  save_results = TRUE,
+  save_path = NULL,
   ...
 )
+
+render_report_simulation(output_file = "simulation.html", ...)
 }
 \arguments{
-\item{regulon}{A data frame being the output from epiregulon workflow. The weight
-column, if present, will be disregarded.}
-
-\item{regulon_script}{A full path to the R script file with the code generating the regulon. It
-will not be evaluated.}
+\item{motif_db_dir}{Path to the direcotry with motif databases used by \code{pycistarget}. Can be downloaded from
+https://resources.aertslab.org/cistarget/databases/homo_sapiens/hg38/screen/mc_v10_clust/region_based/.}
 
 \item{treatments}{A named list of character vectors. Each name corresponds to
 one treatment and each vector to respective control groups. Treatments and control groups

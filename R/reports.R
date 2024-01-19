@@ -39,7 +39,7 @@ render_report_AR <- function(output_file="AR.html", path_to_ArchR_proj,
 
 #' @rdname render_report_reprogram_seq
 #' @export
-render_report_simulation <- function(output_file = "AR.html", ...){
+render_report_simulation <- function(output_file = "simulation.html", ...){
     rmarkdown::render(system.file("reports/Simulation_benchmark.Rmd", package="epiregulon.benchmark"), output_format="all", output_file=output_file,
                       params=list(...))
 }
