@@ -7,7 +7,6 @@ output:
     toc: true
     toc_depth: 3
 params:
-    atac.effect: 0.5
     save_results: TRUE
     save_path: ""
 ---
@@ -20,12 +19,28 @@ knitr::opts_chunk$set(
 )
 ```
 
+
+```{r}
+suppressWarnings({
+    library(epiregulon.benchmark)
+    library(scMultiSim)
+    library(ggplot2)
+    library(ggpubr)
+    library(rstatix)
+    library(dplyr)
+})
+
+```
+
+```{r Epiregulon, child = system.file("reports/GRN_preparation.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE, message=FALSE}
+```
+```{r}
+atac.effect <- 0.5
+```
 ```{r Epiregulon, child = system.file("reports/basic_simulation.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE, message=FALSE}
 ```
 
-```{r echo=FALSE}
-library(epiregulon.benchmark)
-library(scMultiSim)
+```{r echo=FALSE, cache=TRUE, cache.lazy=FALSE}
 data("transcription_difference_matrix")
 weights_exp_cutoff = 1
 weights_peak_cutoff = 0
@@ -43,14 +58,15 @@ add_columns <- function(df, sparsity="medium", pseudobulks=FALSE,
                         ATAC_effect = "normal", counts = "Observed counts",
                         GRN_noise="uncontaminated"){
     df$sparsity <- sparsity
-    df$psedubulks <- pseudobulks
+    df$pseudobulks <- pseudobulks
     df$ATAC_effect <- ATAC_effect
     df$counts <- counts
     df$GRN_noise <- GRN_noise
     df
 }
-
-plot_data <- data.frame
+```
+```{r cache=TRUE, cache.lazy=FALSE, message=FALSE}
+plot_data <- data.frame()
 # Uncontaminated regulon, observed counts
 plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, transcription_difference_matrix,
                           exp_assay = "norm_counts_obs",
@@ -62,7 +78,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, t
                           peak_cutoff = peak_cutoff,
                           tf_re.merge = tf_re.merge) 
 
-plot_data <- add_columns(plot_data)
+plot_data_part <- add_columns(plot_data_part)
 plot_data <- rbind(plot_data, plot_data_part)
 
 # pseudobulks
@@ -76,7 +92,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, t
                           peak_cutoff = peak_cutoff,
                           tf_re.merge = tf_re.merge) 
 
-plot_data <- add_columns(plot_data, pseudobulks=TRUE)
+plot_data_part <- add_columns(plot_data_part, pseudobulks=TRUE)
 plot_data <- rbind(plot_data, plot_data_part)
 
 # Contaminating regulon with 50% of false connections
@@ -94,7 +110,7 @@ plot_data_part <- runEpiregulonWorkflows(regulon.mixed, input_objects, transcrip
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = c(NA, 0.05, 0.001, 0.0001))
 
-plot_data <- add_columns(plot_data, GRN_noise="+100% false")
+plot_data_part <- add_columns(plot_data_part, GRN_noise="+100% false")
 plot_data <- rbind(plot_data, plot_data_part)
 
 
@@ -116,11 +132,12 @@ plot_data_part <- runEpiregulonWorkflows(regulon.reduced, input_objects, transcr
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = c(NA, 0.05, 0.001, 0.0001)) 
 
-plot_data <- add_columns(plot_data, GRN_noise="-50% true")
+plot_data_part <- add_columns(plot_data_part, GRN_noise="-50% true")
 plot_data <- rbind(plot_data, plot_data_part)
 
 # Removing 50% of true connections and contaminating regulon with 50% of false connections
-
+```
+```{r cache=TRUE, cache.lazy=FALSE, message=FALSE}
 set.seed(1110)
 # remove part of the true connections
 remove_ind <- sample(1:nrow(input_objects$regulon), round(nrow(input_objects$regulon)/2))
@@ -137,7 +154,7 @@ plot_data_part <- runEpiregulonWorkflows(regulon.mixed, input_objects, transcrip
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = c(NA, 0.05, 0.001, 0.0001)) 
 
-plot_data <- add_columns(plot_data, GRN_noise="-50% true\n+100% false")
+plot_data_part <- add_columns(plot_data_part, GRN_noise="-50% true\n+100% false")
 plot_data <- rbind(plot_data, plot_data_part)
 
 # Removing 50% of true connections and contaminating regulon with 2/3 of false connections
@@ -159,9 +176,10 @@ plot_data_part <- runEpiregulonWorkflows(regulon.mixed, input_objects, transcrip
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = c(NA, 0.05, 0.001, 0.0001)) 
 
-plot_data <- add_columns(plot_data, GRN_noise="-50% true\n+200% false")
+plot_data_part <- add_columns(plot_data_part, GRN_noise="-50% true\n+200% false")
 plot_data <- rbind(plot_data, plot_data_part)
-
+```
+```{r cache=TRUE, cache.lazy=FALSE, message=FALSE}
 # true counts
 
 plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, transcription_difference_matrix,
@@ -175,7 +193,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, t
                           regulon_cutoffs = NULL,
                           TF_expression = TRUE) 
 
-plot_data <- add_columns(plot_data, counts="True counts")
+plot_data_part <- add_columns(plot_data_part, counts="True counts")
 plot_data <- rbind(plot_data, plot_data_part)
 
 
@@ -208,7 +226,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects_ls$regulon, input_objects
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = NULL) 
 
-plot_data <- add_columns(plot_data, sparsity="low")
+plot_data_part <- add_columns(plot_data_part, sparsity="low")
 plot_data <- rbind(plot_data, plot_data_part)
 
 
@@ -225,7 +243,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects_ls$regulon, input_objects
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = NULL) 
 
-plot_data <- add_columns(plot_data, sparsity="low", pseudobulks=TRUE)
+plot_data_part <- add_columns(plot_data_part, sparsity="low", pseudobulks=TRUE)
 plot_data <- rbind(plot_data, plot_data_part)
 
 # Sparsity greater than default
@@ -252,7 +270,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects_gs$regulon, input_objects
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = NULL) 
 
-plot_data <- add_columns(plot_data, sparsity="high")
+plot_data_part <- add_columns(plot_data_part, sparsity="high")
 plot_data <- rbind(plot_data, plot_data_part)
 
 
@@ -269,15 +287,15 @@ plot_data_part <- runEpiregulonWorkflows(input_objects_gs$regulon, input_objects
                           tf_re.merge = tf_re.merge,
                           regulon_cutoffs = NULL) 
 
-plot_data <- add_columns(plot_data, sparsity="high", pseudobulks=TRUE)
+plot_data_part <- add_columns(plot_data_part, sparsity="high", pseudobulks=TRUE)
 plot_data <- rbind(plot_data, plot_data_part)
 
 ```
 
-
-
 ```{r}
-params$atac.effect <- 0.85
+# copy previous simulation results before they are overwritten
+# sim_res_normal_ATAC <- sim_res
+atac.effect <- 0.85
 ```
 
 ```{r Epiregulon, child = system.file("reports/basic_simulation.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE}
@@ -299,7 +317,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, t
                           regulon_cutoffs = NULL,
                           TF_expression = TRUE) 
 
-plot_data <- add_columns(plot_data, ATAC_effect="strong", counts="True counts")
+plot_data_part <- add_columns(plot_data_part, ATAC_effect="strong", counts="True counts")
 plot_data <- rbind(plot_data, plot_data_part)
 
 # observed counts
@@ -314,7 +332,7 @@ plot_data_part <- runEpiregulonWorkflows(input_objects$regulon, input_objects, t
                           regulon_cutoffs = NULL,
                           TF_expression = TRUE) 
 
-plot_data <- add_columns(plot_data, ATAC_effect="strong")
+plot_data_part <- add_columns(plot_data_part, ATAC_effect="strong")
 plot_data <- rbind(plot_data, plot_data_part)
 
 set.seed(11000)
@@ -328,16 +346,9 @@ input_objects_gs <- processSimResults(sim_res)
 ```
 
 # Plots
-```{r}
-suppressWarnings({
-    library(ggplot2)
-    library(ggpubr)
-    library(rstatix)
-})
-```
 
 ## GRN noise
-```{r fig.dim=c(4.5,4)}
+```{r fig.dim=c(4.5,4), cache=TRUE, cache.lazy=FALSE}
 df <- dplyr::filter(plot_data , method !="TF expression", ATAC_effect == "normal", pseudobulks==FALSE,
                     counts=="Observed counts", sparsity=="medium", is.na(pval_cutoff))
 
@@ -349,9 +360,8 @@ df$GRN_noise <- factor(df$GRN_noise, levels = c("uncontaminated",
 
 df$method <- factor(df$method, levels = c("wilcoxon", "corr", "MI"))
 
-library(ggplot2)
 dev.new()
-pdf(file.path(save_path, "GRN_noise.pdf"), height = 5, width = 8)
+pdf(file.path(params$save_path, "GRN_noise.pdf"), height = 5, width = 8)
 
 ggplot(df, aes(x = method, y = correlations, fill = method))+
     geom_boxplot(lwd=0.1, outlier.size=0.1)+
@@ -366,8 +376,8 @@ ggplot(df, aes(x = method, y = correlations, fill = method))+
           axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5, size = 10))
 
 if(params$save_results){
-    if(!dir.exists(file.path(save_path, "plots","simualtion"))) dir.create(file.path(save_path, "plots", "simualtion"))
-    ggsave(file.path(save_path, "plots", "simulation", "GRN_noise.pdf"), width = 4.5, height = 4)
+    if(!dir.exists(file.path(params$save_path, "plots","simualtion"))) dir.create(file.path(params$save_path, "plots", "simualtion"))
+    ggsave(file.path(params$save_path, "plots", "simulation", "GRN_noise.pdf"), width = 4.5, height = 4)
 }
 ```
 
@@ -402,7 +412,7 @@ boxplot_pseudobulks <- ggboxplot(df, x = "method", y= "correlations", fill = "ps
 boxplot_pseudobulks + stat_pvalue_manual(stat_tests, label = "p.adj", tip.length = 0)
 
 if(params$save_results){
-    ggsave(file.path(save_path, "plots", "simulation", "pseudobulks.pdf"), width = 5, height = 5)
+    ggsave(file.path(params$save_path, "plots", "simulation", "pseudobulks.pdf"), width = 5, height = 5)
 }
 ```
 
@@ -445,11 +455,11 @@ boxplot_ATAC <- ggboxplot(df, x = "method", y= "correlations", fill = "ATAC_effe
 boxplot_ATAC + stat_pvalue_manual(stat_tests, label = "p.adj", tip.length = 0, size = 3.5)
 
 if(params$save_results){
-    ggsave(file.path(save_path, "plots", "simulation", "ATACseq_signal_effect.pdf"), width = 5, height = 8)
+    ggsave(file.path(params$save_path, "plots", "simulation", "ATACseq_signal_effect.pdf"), width = 5, height = 8)
 }
 ```
 
-# Varying sparsity
+## Varying sparsity
 ```{r fig.dim=c(5,8)}
 df <- dplyr::filter(plot_data, is.na(pval_cutoff), ATAC_effect == "normal", sparsity == "medium",
                     pseudobulks==FALSE)
@@ -469,28 +479,66 @@ ggplot(df, aes(x = method, y = correlations, fill = method))+
           axis.text.x = element_text(angle = 90, hjust = 1))
 
 if(params$save_results){
-    ggsave(file.path(save_path, "plots", "simulation", "sparsity.pdf"), width = 5, height = 8)}
+    ggsave(file.path(params$save_path, "plots", "simulation", "sparsity.pdf"), width = 5, height = 8)}
 ```
 
-# Pruning efficiency
+## Pruning efficiency
 ```{r fig.dim=c(6.5,6.5)}
 
 df <- dplyr::filter(plot_data, ATAC_effect == "normal", sparsity == "medium",
-                    pseudobulks==FALSE, counts = "Observed counts", method!="TF expression")
-check_pruning_effect(df)
+                    pseudobulks==FALSE, counts == "Observed counts", method!="TF expression")
+epiregulon.benchmark::check_pruning_effect(df)
 if(params$save_results){
-    ggsave(file.path(save_path, "plots", "simulation", "pruning_efficiency.pdf"), width = 5, height = 8)}
+    ggsave(file.path(params$save_path, "plots", "simulation", "pruning_efficiency.pdf"), width = 5, height = 8)}
 ```
 
 
-```{r}
-regulon <- input_objects$regulon
+```{r message=FALSE}
+regulon <- input_objects_gs$regulon
 
 # add contamination
-
 set.seed(1110)
-# regulon contamination
 regulon <- addFalseConnections(input_objects$regulon, fraction_false = 1/2)
+
+regulon.fixed <-  pruneRegulon(regulon = regulon,
+                         expMatrix = input_objects$geneExpMatrix,
+                         exp_assay = "norm_counts_obs",
+                         peakMatrix = input_objects$peakMatrix,
+                         peak_assay = "peak_obs",
+                         test = "chi.sq",
+                         clusters = input_objects$geneExpMatrix$label,
+                         regulon_cutoff = 2)
+
+RP_table <- data.frame()
+for(cutoff in seq(0,3, by = 0.01)){
+    TP_fixed <- sum((abs(regulon.fixed$stats[,"all"]) >= cutoff) & (regulon.fixed$connection_type == TRUE))
+    FP_fixed <- sum((abs(regulon.fixed$stats[,"all"]) >= cutoff) & (regulon.fixed$connection_type == FALSE))
+    FN_fixed <- sum((abs(regulon.fixed$stats[,"all"]) < cutoff) & (regulon.fixed$connection_type == TRUE))
+    RP_table <- rbind(RP_table, data.frame(cutoff = cutoff,
+                                           TP_fixed = TP_fixed, FP_fixed = FP_fixed, FN_fixed = FN_fixed))
+}
+
+y1 <- (RP_table$TP_fixed/(RP_table$TP_fixed + RP_table$FN_fixed))
+y2 <- (RP_table$TP_fixed/(RP_table$TP_fixed + RP_table$FP_fixed))
+ylim <- c(min(y1,y2)-0.01, max(y1,y2)+0.01)
+plot(seq(0,3, by = 0.01), y1, xlab = "z-score cutoff (absolute value)",
+     ylab = "Recall/precision", type = "l", main = "Accuracy of the pruning, observed counts", ylim=ylim)
+ lines(seq(0,3, by = 0.01), y2, col = "red")
+ legend(x = 0.2, y=1, c("Recall", "Precision"), col=c("red", "black"), lty = c(1,1))
+
+if(params$save_results){
+    dev.new()
+    pdf(file.path(params$save_path, "plots", "simulation", "recall_precision_strong_ATAC.pdf"), width = 6, height = 6)
+    y1 <- (RP_table$TP_fixed/(RP_table$TP_fixed + RP_table$FN_fixed))
+    y2 <- (RP_table$TP_fixed/(RP_table$TP_fixed + RP_table$FP_fixed))
+    ylim <- c(min(y1,y2)-0.01, max(y1,y2)+0.01)
+    plot(seq(0,3, by = 0.01), y1, xlab = "z-score cutoff (absolute value)",
+         ylab = "Recall/precision", type = "l", main = "Accuracy of the pruning, observed counts", ylim=ylim)
+     lines(seq(0,3, by = 0.01), y2, col = "red")
+     legend(x = 0.2, y=1, c("Recall", "Precision"), col=c("red", "black"), lty = c(1,1))
+    dev.off()
+}
+
 
 # add column with the correlation between expression of transcription factor and target gene 
 regulon <- addTfTargetCorr(regulon, input_objects$geneExpMatrix, assay_name = "norm_counts_obs")
@@ -501,7 +549,27 @@ regulon <- addReTargetCorr(regulon, input_objects$geneExpMatrix, input_objects$p
 
 regulon <- addTgNumb(regulon, sim_res)
 
-res <- accuracyComparisonPruning(regulon, input_objects, transcription_difference_matrix,
+if(params$save_results){
+    dev.new()
+    pdf(file.path(params$save_path, "plots", "simulation", "TF-TG_corr_strong_ATAC.pdf"), width = 3, height = 6)
+    boxplot(regulon$tf_tg_corr[!duplicated(regulon[,c("tf", "target")])]~regulon$connection_type[!duplicated(regulon[,c("tf", "target")])],
+            main = "True and false\nGRN edges", ylab = "TF-TG correlation", xlab = "Edge status")
+    dev.off()
+    
+    dev.new()
+    pdf(file.path(params$save_path, "plots", "simulation", "RE-TG_corr_strong_ATAC.pdf"), width = 3, height = 6)
+    boxplot(regulon$re_tg_corr[!duplicated(regulon[,c("tf", "target")])]~regulon$connection_type[!duplicated(regulon[,c("tf", "target")])],
+            main = "True and false\nGRN edges", ylab = "RE-TG correlation", xlab = "Edge status")
+    dev.off()
+}
+
+boxplot(regulon$tf_tg_corr[!duplicated(regulon[,c("tf", "target")])]~regulon$connection_type[!duplicated(regulon[,c("tf", "target")])],
+        main = "True and false\nGRN edges", ylab = "TF-TG correlation", xlab = "Edge status")
+
+boxplot(regulon$re_tg_corr[!duplicated(regulon[,c("tf", "target")])]~regulon$connection_type[!duplicated(regulon[,c("tf", "target")])],
+        main = "True and false\nGRN edges", ylab = "RE-TG correlation", xlab = "Edge status")
+
+res <- accuracyComparisonPruning(regulon, input_objects, transcription_difference_matrix_strong_ATAC,
                           exp_assay = "norm_counts_obs",
                           peak_assay = "peak_obs",
                           weights_exp_cutoff = 1,
@@ -521,6 +589,87 @@ df$re_tg_corr <- tapply(regulon[regulon$connection_type,]$re_tg_corr, regulon[re
 
 # add column with the tg per tf number
 df$tg_numb <- unlist(lapply(df$tf, function(x) regulon[regulon$tf==x,"tg_numb"][1]))
+```
 
+## Relation between weights and connection status
+```{r}
 regulons <- res$regulon_list
+
+for(method in names(regulons)){
+    regulons[[method]]$method <- method
+    regulons[[method]]$weight <- as.vector(regulons[[method]]$weight)
+}
+regulons <- do.call(rbind, regulons)
+regulons$method <- factor(regulons$method, levels = c("wilcoxon", "corr", "MI"))
+
+
+ggplot(as.data.frame(regulons), aes(x = connection_type, y = weight))+
+    ggrastr::rasterise(geom_jitter(aes(color = tf_tg_corr), alpha = 0.4, width = 0.4, cex = 0.1), dpi = 100)+
+    #scale_color_viridis_c(scale_name = "Correlation between\nTF and TG")+
+    scale_color_viridis_c()+
+    geom_boxplot(outlier.size = 0.2, fill=rgb(1,1,1,0))+
+    facet_wrap(~method, nrow=1, scales = "free")+
+    xlab("Edge status")+
+    ylab("Weight")+
+    ggtitle("Weight values comparison across different\nmethods and between edge types")+
+    theme(plot.title = element_text(hjust = 0.5),
+          panel.background = element_rect(fill = "white", colour="white"),
+          axis.text.x = element_text(angle = 90),
+          axis.text.y = element_text(size = 6))
+
+if(params$save_results){
+    ggsave(file.path(params$save_path, "plots", "simulation", "weights_by_connection_type_colTF-TG_strong_ATAC.pdf"), height = 5, width = 4)}
+
+ggplot(as.data.frame(regulons), aes(x = connection_type, y = weight))+
+    ggrastr::rasterise(geom_jitter(aes(color = re_tg_corr), alpha = 0.4, width = 0.4, size = 0.01), dpi = 100)+
+    #scale_color_viridis_c(scale_name = "Correlation between\nTF and TG")+
+    scale_color_viridis_c()+
+    geom_boxplot(outlier.size = 0.2, fill=rgb(1,1,1,0))+
+    facet_wrap(~method, nrow=1, scales = "free")+
+    xlab("Edge status")+
+    ylab("Weight")+
+    ggtitle("Weight values comparison across different\nmethods and between edge types")+
+    theme(plot.title = element_text(hjust = 0.5),
+          panel.background = element_rect(fill = "white", colour="white"),
+          axis.text.x = element_text(angle = 90),
+          axis.text.y = element_text(size = 6))
+
+if(params$save_results){
+    ggsave(file.path(params$save_path, "plots", "simulation", "weights_by_connection_type_colRE-TG_strong_ATAC.pdf"), height = 5, width = 4)}
+```
+
+
+## Greater sparsity - pruning performance
+
+```{r message=FALSE}
+df <- df[df$pval_cutoff %in% c(2, 0.5, 0.2, 0.05, 0.01),]
+df_new <- data.frame()
+reference_all <- df[df$pval_cutoff==2,]
+df <- split(df, df$pval_cutoff)
+for(i in 1:length(df)){
+    if(df[[i]]$pval_cutoff[1] == 2) next
+    reference <- reference_all[reference_all$tf %in% df[[i]]$tf,]
+    reference <- reference[match(df[[i]]$tf, reference$tf),]
+    df[[i]]$correlation_delta <- df[[i]]$correlations - reference$correlations
+    df[[i]]$n_tf <- length(unique((df[[i]]$tf)))
+    df_new <- rbind(df_new, df[[i]])
+}
+df_new$pval_cutoff <- factor(df_new$pval_cutoff, levels = sort(as.numeric(unique(df_new$pval_cutoff))))
+df_new <- df_new[df_new$method =="wilcoxon", ]
+ggplot(df_new, aes(x = pval_cutoff, y = correlation_delta))+
+    geom_jitter(aes(color = tg_numb), cex = 0.7, width = 0.3, alpha = 0.4)+
+    geom_boxplot(lwd= 0.1, outlier.size = 0.1, fill=rgb(1,1,1,0))+
+    scale_color_viridis_c("Regulon size")+
+    #stat_summary(fun = median, geom = "label")+
+    coord_flip()+
+    xlab("p-value cutoff")+
+    ylab("Correlation change")+
+    ggtitle("Effect of the pruning\non the activity assessment accuracy")+
+    theme(plot.title = element_text(hjust = 0.5),
+          panel.background = element_rect(fill = "white", colour="white"))+
+    geom_hline(yintercept = 0, linetype = "dashed", lwd = 0.2)
+
+if(params$save_results){
+    ggsave(file.path(params$save_path, "plots", "simulation", "pruning_performance.pdf"), height = 3.5, width = 5)}
+
 ```
