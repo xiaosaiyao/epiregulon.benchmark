@@ -301,7 +301,7 @@ atac.effect <- 0.85
 ```{r Epiregulon, child = system.file("reports/basic_simulation.Rmd", package = "epiregulon.benchmark"),cache=TRUE, cache.lazy=FALSE}
 ```
 
-```{r cache = TRUE, cache.lazy=FALSE, message=FALSE}
+```{r cache = TRUE, cache.lazy=FALSE, message=FALSE, results='hide', fig.keep='all'}
 data("transcription_difference_matrix_strong_ATAC")
 input_objects <- processSimResults(sim_res)
 

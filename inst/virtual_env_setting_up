@@ -1,8 +1,0 @@
-Preparation of the virtual environemnt for cellOracle workflow
-conda create -n cellOracle_publ python=3.8
-conda activate cellOracle_publ
-pip install seaborn
-pip install pybedtools
-pip install celloracle
-ml add  R/dev
-ml add  BEDTools/2.26.0-foss-2017a

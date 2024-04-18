@@ -2,3 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
+/inst/scenicplus/*
+/inst/loomXpy/*
+/inst/pycisTopic/*
+/inst/pycistarget/*
+

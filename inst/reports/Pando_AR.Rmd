@@ -125,7 +125,6 @@ Seurat_obj@assays$peaks <- subset(peaks_assay, features = rownames(peaks_assay)[
 # Pando workflow
 ##########
 
-Seurat_obj <- as(Seurat_obj, "SeuratPlus")
 
 # Select variable features (restrict genes to those which are highly variable)
 Seurat_obj <- Seurat::FindVariableFeatures(Seurat_obj, assay='SCT')
@@ -134,6 +133,10 @@ DefaultAssay(Seurat_obj) <- "SCT"
 
 # Get motif data
 data(motifs)
+
+# Error for Surat v. 5 see https://github.com/quadbio/Pando/issues/40
+# remotes::install_version("Seurat", version = "4.3.0")
+Seurat_obj <- as(Seurat_obj, "SeuratPlus")
 
 # Initiate GRN object and select candidate regions
 Seurat_obj <- initiate_grn(Seurat_obj,

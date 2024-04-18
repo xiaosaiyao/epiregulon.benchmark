@@ -11,14 +11,15 @@ grl <- getTFMotifInfo(genome = "hg38")
 set.seed(1010, kind ="L'Ecuyer-CMRG")
 p2g <- calculateP2G(peakMatrix = PeakMatrix, 
                     expMatrix = GeneExpressionMatrix, 
-                    reducedDim = reducedDimMatrix)
+                    reducedDim = reducedDimMatrix,
+                    exp_assay = "normalizedCounts")
 
 overlap <- addTFMotifInfo(grl = grl, p2g = p2g, peakMatrix = PeakMatrix)
 
 regulon <- getRegulon(p2g = p2g, overlap = overlap, aggregate = FALSE)
 
 regulon <- pruneRegulon(expMatrix = GeneExpressionMatrix,
-                               exp_assay = "logcounts",
+                               exp_assay = "normalizedCounts",
                                peakMatrix = PeakMatrix,
                                peak_assay = "counts",
                                test = "chi.sq",

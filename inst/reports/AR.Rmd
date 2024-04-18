@@ -10,10 +10,10 @@ params:
     data_file_paths: ""
     temp_dir: ""
     work_dir: ""
-    n_cpu: 6
+    n_cpu: 12
     GRaNIE_tfbs: ""
     motif_score: TRUE
-    packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
+    packages: "c('Epiregulon', 'Pando', 'scenicplus', 'GRaNIE', 'FigR')"
     cell_lines: "c('VCaP', 'LNCaP')"
     save_results: TRUE
     save_path: ""

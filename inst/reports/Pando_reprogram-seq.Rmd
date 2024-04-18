@@ -9,8 +9,7 @@ library(foreach)
 #library(biomaRt)
 library(epiregulon.benchmark)
 
-mae <- scMultiome::reprogramSeq()
-geneExprMatrix <- mae[["GeneExpressionMatrix"]]
+geneExprMatrix <- GeneExpressionMatrix
 geneExprCounts <- assays(geneExprMatrix)$normalizedCounts
 colnames(geneExprCounts) <- gsub("reprogram#", "", colnames(geneExprCounts))
 GEX_assay <- CreateAssayObject(data = as.matrix(geneExprCounts))
@@ -58,6 +57,8 @@ Seurat_obj@assays$peaks <- subset(peaks_assay, features = rownames(peaks_assay)[
 # Pando workflow
 ##########
 
+# Error for Surat v. 5 see https://github.com/quadbio/Pando/issues/40
+# remotes::install_version("Seurat", version = "4.3.0")
 Seurat_obj <- as(Seurat_obj, "SeuratPlus")
 
 # Select variable features (restrict genes to those which are highly variable)

@@ -15,7 +15,7 @@ params:
     group_variable: "HTO"
     GRaNIE_tfbs: ""
     save_path: ""
-    packages: "c('Epiregulon', 'Pando', 'cellOracle', 'scenicplus', 'GRaNIE', 'FigR')"
+    packages: "c('Epiregulon', 'Pando', 'scenicplus', 'GRaNIE', 'FigR')"
     save_results: TRUE
     motif_db_dir: ""
 ---
@@ -169,18 +169,6 @@ Seurat_obj  <- Seurat::RenameCells(Seurat_obj, new.names = paste0("reprogram#", 
 GRN_list[["Pando"]] <- Seurat_obj 
 ```
 
-```{r echo = FALSE}
-eval_package = FALSE
-if("cellOracle" %in% benchmarked_packages) eval_package = TRUE
-```
-
-```{r child = system.file("reports/cellOracle_reprogram-seq.Rmd", package = "epiregulon.benchmark"), cache = TRUE, cache.lazy=FALSE, eval=eval_package}
-```
-
-```{r cache = TRUE, cache.lazy=FALSE}
-GRN_list[["cellOracle"]] <- links
-GRN_list[["louvain_clusters"]] <- louvain_clusters
-```
 
 ```{r echo = FALSE}
 eval_package = FALSE
@@ -219,9 +207,6 @@ GRN_list[["scenic_plus"]] <- scenic_plus_res
 ```
 
 ```{r cache = TRUE, cache.lazy=FALSE, message=FALSE}
-louvain_clusters <- GRN_list[["louvain_clusters"]]
-# label cellOracle clusters by matching cell barcodes
-SummarizedExperiment::colData(GeneExpressionMatrix)$cluster_cellOracle <- as.character(louvain_clusters$cluster[match(louvain_clusters$barcode, colnames(GeneExpressionMatrix))])
 matrices_list <- list()
 for(i in seq_along(GRN_list)){
     GRN <- GRN_list[[i]]
@@ -281,7 +266,7 @@ if(params$save_results)
 
 # Number of recovered transcription factors
 ```{r fig.dim=c(4.5,4)}
-res <- c(Epiregulon = 0, Pando = 0, cellOracle = 0, FigR = 0, GRaNIE = 0)
+res <- c(Epiregulon = 0, Pando = 0, FigR = 0, GRaNIE = 0)
 for(i in seq_along(GRN_list)){
     current_package <- names(GRN_list)[i]
     if(current_package == "Epiregulon")
@@ -293,8 +278,6 @@ for(i in seq_along(GRN_list)){
         res["FigR"] <- length(unique(GRN_list$FigR$Motif))
     else if(current_package == "GRaNIE")
         res["GRaNIE"] <- length(unique(GRN_list$GRaNIE$TF.name))
-    else if(current_package == "cellOracle")
-        res["cellOracle"] <- length(unique(GRN_list$cellOracle$source))
 }
 
 for(score.matrix.name in c("scenic_plus_pos_gene", "scenic_plus_neg_gene",
@@ -306,7 +289,7 @@ res <- data.frame(n_tf = res, package = names(res))
 res <- res[res$n_tf>0,]
 
 colors <- c(Epiregulon = "red", FigR = "black", Pando = "blue", GRaNIE = "green1",
-            cellOracle = "purple", scenic_plus_neg_gene = "grey", scenic_plus_pos_gene = "orange",
+             scenic_plus_neg_gene = "grey", scenic_plus_pos_gene = "orange",
             scenic_plus_pos_region = "green4", scenic_plus_neg_region = "tan4",
             "Gene expression" = "darkslategray2")
 
@@ -326,7 +309,7 @@ ggplot(res, aes(y = n_tf, x = package, fill = package))+
     ylab("Number of transcription factors found")+
     xlab("Package")+
     ggtitle("The number of transcription factors found\nwith the use of different GRN inference tools")+
-    scale_x_discrete(labels=c("Epiregulon" = "Epiregulon", "Pando" = "Pando", "cellOracle" = "cellOracle", 
+    scale_x_discrete(labels=c("Epiregulon" = "Epiregulon", "Pando" = "Pando", 
                               "FigR" = "FigR", "GRaNIE" = "GRaNIE",
                               "scenic_plus_pos_gene" = "scenicplus\ngene-based\npositive",
                               "scenic_plus_neg_gene" = "scenicplus\ngene-baned\nnegative",

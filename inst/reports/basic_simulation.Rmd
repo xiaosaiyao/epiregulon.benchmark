@@ -9,28 +9,22 @@ options_ = list(
     intrinsic.noise = 0.9,
     giv.prob = 0.05,
     augmented.transcr = NULL, # custom parameter
-    atac.effect = 0.5, # effect of regulatory element availability on k_on parameter
+    atac.effect = atac.effect, # effect of regulatory element availability on k_on parameter
     diff.cif.fraction = 0.8, # fraction of CIFs related to the cell development 
     discrete.cif = TRUE, # use discrete mode
     discrete.min.pop.size = 300)
 ```
 
-```{r eval = FALSE}
+```{r eval = TRUE}
 library(scMultiSim)
 set.seed(10110)
 sim_res <- sim_true_counts(options_)
+
 # add noise to gene expression and ATAC-seq data
 set.seed(11000)
 add_expr_noise(sim_res, protocol = "UMI")
-# pointers to objects starting with . will disappear during conversion from environment to list
-.grn <- sim_res$.grn
-sim_res <- as.list(sim_res)
-sim_res$.grn <- .grn 
-dimnames(sim_res$counts_obs$counts) <- dimnames(sim_res$counts)
-saveRDS(sim_res, "/gstore/scratch/u/wlodarct/sim_res.rds")
+if(params$save_results)
+saveRDS(sim_res, file.path(params$save_path, paste0("sim_res_", params$atac.effect, ".rds")))
 ```
-```{r echo = TRUE, eval = TRUE}
-#Sys.setenv("R_MAX_VSIZE" = 30 * 2^30)
-sim_res <- readRDS("/gstore/scratch/u/wlodarct/sim_res.rds")
-```
+
 

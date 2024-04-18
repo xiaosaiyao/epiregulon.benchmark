@@ -1,5 +1,5 @@
 ```{r}
-library(epiregulon)
+library(epiregulon.archr)
 library(ArchR)
 library(BiocParallel)
 library(GenomicRanges)
@@ -80,8 +80,6 @@ if("LNCaP" %in% AR_cell_lines){
     
     
     regulon_df_full_LNCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
-    if(params$save_results) saveRDS(regulon_df_full_LNCaP, file.path(save_path, "regulon_full_LNCaP.rds"))
-    
     # prune network
     pruned.regulon_LNCaP <- pruneRegulon(regulon = regulon_df_full_LNCaP,
                                    expMatrix = GeneExpressionMatrix_LNCaP,
@@ -92,7 +90,12 @@ if("LNCaP" %in% AR_cell_lines){
                                    clusters = GeneExpressionMatrix_LNCaP$TEST_ARTICLE
     )
     
-    if(params$save_results) saveRDS(pruned.regulon_LNCaP, file.path(save_path, "pruned.regulon_LNCaP.rds"))
+    if(params$save_results) {
+        saveRDS(pruned.regulon_LNCaP, file.path(save_path, "pruned.regulon_LNCaP.rds"))
+        saveRDS(regulon_df_full_LNCaP, file.path(save_path, "regulon_full_LNCaP.rds"))
+        saveRDS(GeneExpressionMatrix_LNCaP, file.path(save_path, "GeneExpressionMatrix_LNCaP.rds"))
+        saveRDS(peakMatrix_LNCaP, file.path(save_path, "peakMatrix_LNCaP.rds"))
+    }
         
 }
 
@@ -126,7 +129,6 @@ if("VCaP" %in% AR_cell_lines){
     
     
     regulon_df_full_VCaP <- getRegulon(p2g, overlap, aggregate = FALSE)
-    if(params$save_results) saveRDS(regulon_df_full_VCaP, file.path(save_path, "regulon_full_VCaP.rds"))
     
     # prune network
     pruned.regulon_VCaP <- pruneRegulon(regulon = regulon_df_full_VCaP,
@@ -138,7 +140,12 @@ if("VCaP" %in% AR_cell_lines){
                                    clusters = GeneExpressionMatrix_VCaP$TEST_ARTICLE
     )
     
-    if(params$save_results) saveRDS(pruned.regulon_VCaP, file.path(save_path, "pruned.regulon_VCaP.rds"))
+    if(params$save_results) {
+        saveRDS(pruned.regulon_VCaP, file.path(save_path, "pruned.regulon_VCaP.rds"))
+        saveRDS(regulon_df_full_VCaP, file.path(save_path, "regulon_full_VCaP.rds"))
+        saveRDS(GeneExpressionMatrix_VCaP, file.path(save_path, "GeneExpressionMatrix_VCaP.rds"))
+        saveRDS(peakMatrix_VCaP, file.path(save_path, "peakMatrix_VCaP.rds"))
+    }
         
 }
 

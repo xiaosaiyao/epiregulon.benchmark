@@ -9,17 +9,18 @@ License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.0
 Imports:
     reshape2,
     BiocParallel,
     basilisk,
     SingleCellExperiment,
     scran,
-    rtracklayer
+    rtracklayer,
 Depends:
     R (>= 2.10),
     epiregulon.archr,
+    Seurat (<= 4.3.0.1)
 Suggests:
     GenomicRanges,
     ArchR,
@@ -36,16 +37,15 @@ Suggests:
     knitr,
     rmarkdown,
     FigR,
-    scMultiSim,
-    cicero,
-    monocle3,
     tibble,
-    ensembldb
+    ensembldb,
+    scMultiSim,
+    BuenColors
 Remotes:
     buenrostrolab/FigR,
     ZhangLabGT/scMultiSim,
-    cole-trapnell-lab/monocle3,
-    cole-trapnell-lab/cicero@monocle3
+    caleblareau/BuenColors,
+    quadbio/Pando
 LazyData: true
 VignetteBuilder: knitr
 StagedInstall: no
